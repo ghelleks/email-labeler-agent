@@ -1,22 +1,60 @@
 function getRuleText_(docIdOrUrl) {
-  if (!docIdOrUrl) return getDefaultPolicyText_();
+  const debug = PropertiesService.getScriptProperties().getProperty('DEBUG') === 'true';
+
+  if (!docIdOrUrl) {
+    if (debug) {
+      console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'no-doc-id-or-url-provided' }, null, 2));
+    }
+    return getDefaultPolicyText_();
+  }
+
   // If a full URL is provided, try to extract the file ID
   var docId = docIdOrUrl;
   if (/^https?:\/\//i.test(docIdOrUrl)) {
     var m = docIdOrUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || docIdOrUrl.match(/id=([a-zA-Z0-9_-]+)/);
     docId = m && m[1] ? m[1] : null;
   }
-  if (!docId) return getDefaultPolicyText_();
+
+  if (!docId) {
+    if (debug) {
+      console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'could-not-extract-doc-id', input: docIdOrUrl }, null, 2));
+    }
+    return getDefaultPolicyText_();
+  }
+
   try {
     const file = DriveApp.getFileById(docId);
     try {
       const txt = file.getAs(MimeType.PLAIN_TEXT).getDataAsString('utf-8');
-      return txt || getDefaultPolicyText_();
+      if (txt) {
+        if (debug) {
+          console.log(JSON.stringify({ ruleDocSource: 'drive-file', docId: docId, textLength: txt.length }, null, 2));
+        }
+        return txt;
+      } else {
+        if (debug) {
+          console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'empty-file-content', docId: docId }, null, 2));
+        }
+        return getDefaultPolicyText_();
+      }
     } catch (e) {
       const txt2 = file.getBlob().getDataAsString('utf-8');
-      return txt2 || getDefaultPolicyText_();
+      if (txt2) {
+        if (debug) {
+          console.log(JSON.stringify({ ruleDocSource: 'drive-file-blob', docId: docId, textLength: txt2.length }, null, 2));
+        }
+        return txt2;
+      } else {
+        if (debug) {
+          console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'empty-blob-content', docId: docId }, null, 2));
+        }
+        return getDefaultPolicyText_();
+      }
     }
   } catch (e) {
+    if (debug) {
+      console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'drive-access-error', docId: docId, error: e.toString() }, null, 2));
+    }
     return getDefaultPolicyText_();
   }
 }

@@ -1,0 +1,16 @@
+{
+  "scriptId": "YOUR_APPS_SCRIPT_PROJECT_ID_HERE",
+  "rootDir": "src",
+  "scriptExtensions": [
+    ".js",
+    ".gs"
+  ],
+  "htmlExtensions": [
+    ".html"
+  ],
+  "jsonExtensions": [
+    ".json"
+  ],
+  "filePushOrder": [],
+  "skipSubdirectories": false
+}

@@ -2,6 +2,18 @@ function categorizeBatch_(emails, rulesText, model, projectId, location, fallbac
   const prompt = buildCategorizePrompt_(rulesText, emails, ['reply_needed','review','todo','summarize'], fallback);
   const payload = { contents: [{ role: 'user', parts: [{ text: prompt }]}] };
 
+  if (PropertiesService.getScriptProperties().getProperty('DEBUG') === 'true') {
+    console.log(JSON.stringify({
+      promptSent: {
+        promptLength: prompt.length,
+        emailCount: emails.length,
+        model: model,
+        fallback: fallback,
+        promptPreview: prompt.substring(0, 500) + (prompt.length > 500 ? '...' : '')
+      }
+    }, null, 2));
+  }
+
   // If API key is present, use Generative Language API (AI Studio) endpoint; else use Vertex OAuth.
   const useApiKey = !!apiKey;
   const url = useApiKey
