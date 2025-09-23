@@ -21,7 +21,9 @@ function getConfig_() {
     AGENTS_BUDGET_PER_RUN: parseInt(p.getProperty('AGENTS_BUDGET_PER_RUN') || '50', 10),
     AGENTS_LABEL_MAP: (function(){
       try { return JSON.parse(p.getProperty('AGENTS_LABEL_MAP') || 'null'); } catch (e) { return null; }
-    })()
+    })(),
+    // Forwarding agent
+    FORWARDING_LABEL: p.getProperty('FORWARDING_LABEL') || 'todo:forward'
   };
 }
 

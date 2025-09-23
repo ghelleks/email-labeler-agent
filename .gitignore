@@ -1,5 +1,5 @@
 # Clasp configuration (contains project-specific script ID)
-.clasp.json
+.clasp.json*
 
 # Node modules (if any)
 node_modules/
