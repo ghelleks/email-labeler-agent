@@ -7,12 +7,21 @@
  * - Honors dry-run by skipping side effects.
  * - Uses idempotency to avoid re-running for the same thread.
  */
-function registerAgents() {
+/**
+ * Preferred pattern: push a registrar into the global AGENT_MODULES queue.
+ * The runtime will drain this queue at startup and call each registrar
+ * with an API exposing Agents.register(). This avoids load-order issues.
+ */
+if (typeof AGENT_MODULES === 'undefined') {
+  AGENT_MODULES = [];
+}
+
+AGENT_MODULES.push(function(api) {
   /**
    * Register a demo agent named 'demoExampleAgent' for the 'summarize' label.
    * The agent does something innocuous so developers can see the pattern.
    */
-  Agents.register(
+  api.register(
     'summarize',
     'demoExampleAgent',
     /**
@@ -41,6 +50,6 @@ function registerAgents() {
       timeoutMs: 20000
     }
   );
-}
+});
 
 

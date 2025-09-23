@@ -78,9 +78,32 @@ var Agents = (function() {
     return results;
   }
 
+  function registerAllModules() {
+    try {
+      var mods = (typeof AGENT_MODULES !== 'undefined' && AGENT_MODULES) || [];
+      if (!mods || !mods.length) return 0;
+      for (var i = 0; i < mods.length; i++) {
+        var registrar = mods[i];
+        if (typeof registrar === 'function') {
+          try { registrar({ register: register }); } catch (e) {
+            // swallow to avoid breaking startup; errors will be visible in DEBUG logs elsewhere
+          }
+        }
+      }
+      // drain the queue so repeated calls don't duplicate registrations
+      if (typeof AGENT_MODULES !== 'undefined') {
+        AGENT_MODULES = [];
+      }
+      return mods.length;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   return {
     register: register,
-    runFor: runFor
+    runFor: runFor,
+    registerAllModules: registerAllModules
   };
 })();
 
