@@ -8,52 +8,48 @@ function getRuleText_(docIdOrUrl) {
     return getDefaultPolicyText_();
   }
 
-  // If a full URL is provided, try to extract the file ID
+  // Extract Doc ID from URL variants or accept raw ID
   var docId = docIdOrUrl;
   if (/^https?:\/\//i.test(docIdOrUrl)) {
-    var m = docIdOrUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || docIdOrUrl.match(/id=([a-zA-Z0-9_-]+)/);
+    var m = docIdOrUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/) ||
+            docIdOrUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) ||
+            docIdOrUrl.match(/id=([a-zA-Z0-9_-]+)/) ||
+            docIdOrUrl.match(/\/([a-zA-Z0-9_-]+)\/edit/);
     docId = m && m[1] ? m[1] : null;
+    if (debug) {
+      console.log(JSON.stringify({ urlParsing: docId ? 'success' : 'failed', originalUrl: docIdOrUrl, extractedId: docId }, null, 2));
+    }
   }
 
   if (!docId) {
-    if (debug) {
-      console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'could-not-extract-doc-id', input: docIdOrUrl }, null, 2));
-    }
     return getDefaultPolicyText_();
   }
 
   try {
-    const file = DriveApp.getFileById(docId);
-    try {
-      const txt = file.getAs(MimeType.PLAIN_TEXT).getDataAsString('utf-8');
-      if (txt) {
-        if (debug) {
-          console.log(JSON.stringify({ ruleDocSource: 'drive-file', docId: docId, textLength: txt.length }, null, 2));
-        }
-        return txt;
-      } else {
-        if (debug) {
-          console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'empty-file-content', docId: docId }, null, 2));
-        }
-        return getDefaultPolicyText_();
-      }
-    } catch (e) {
-      const txt2 = file.getBlob().getDataAsString('utf-8');
-      if (txt2) {
-        if (debug) {
-          console.log(JSON.stringify({ ruleDocSource: 'drive-file-blob', docId: docId, textLength: txt2.length }, null, 2));
-        }
-        return txt2;
-      } else {
-        if (debug) {
-          console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'empty-blob-content', docId: docId }, null, 2));
-        }
-        return getDefaultPolicyText_();
-      }
+    const url = 'https://docs.google.com/feeds/download/documents/export/Export?exportFormat=markdown&id=' + encodeURIComponent(docId);
+    const token = ScriptApp.getOAuthToken();
+    const response = UrlFetchApp.fetch(url, {
+      headers: { Authorization: 'Bearer ' + token },
+      followRedirects: true,
+      muteHttpExceptions: true,
+    });
+
+    const code = response.getResponseCode();
+    const body = response.getContentText('utf-8');
+
+    if (debug) {
+      console.log(JSON.stringify({ ruleDocSource: 'docs-export-markdown', docId: docId, status: code, textLength: body ? body.length : 0 }, null, 2));
     }
+
+    if (code === 200 && body && body.trim()) {
+      return body;
+    }
+
+    // Non-200 or empty body
+    return getDefaultPolicyText_();
   } catch (e) {
     if (debug) {
-      console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'drive-access-error', docId: docId, error: e.toString() }, null, 2));
+      console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'urlfetch-error', docId: docId, error: e && e.toString ? e.toString() : String(e) }, null, 2));
     }
     return getDefaultPolicyText_();
   }
@@ -75,4 +71,23 @@ function getDefaultPolicyText_() {
     '- **Calendar keywords**: "meeting", "schedule", "invite" → review\n' +
     '- **Automated confirmations**: calendar invitations, Notifications, updates, "we processed", "thank you for" → summarize\n'
   );
+}
+
+// Test function to debug Google Doc access (remove after testing)
+function testRuleDocAccess() {
+  // Enable debug mode temporarily
+  PropertiesService.getScriptProperties().setProperty('DEBUG', 'true');
+
+  // Test with your actual Google Doc URL
+  const testUrl = PropertiesService.getScriptProperties().getProperty('RULE_DOC_URL');
+
+  console.log('Testing rule doc access with URL:', testUrl);
+
+  if (testUrl) {
+    const result = getRuleText_(testUrl);
+    console.log('Result length:', result.length);
+    console.log('First 200 characters:', result.substring(0, 200));
+  } else {
+    console.log('No RULE_DOC_URL set in script properties');
+  }
 }
