@@ -11,6 +11,7 @@ function applyLabel_(thread, labelName, dryRun) {
 const Organizer = {
   apply_: function(results, cfg) {
     let labeled = 0, skipped = 0, errors = 0;
+    let agentOk = 0, agentSkip = 0, agentRetry = 0, agentError = 0;
     const byThread = new Map();
     results.forEach(function(r) { byThread.set(r.threadId, r); });
 
@@ -29,11 +30,32 @@ const Organizer = {
         const status = applyLabel_(thread, r.required_action, cfg.DRY_RUN);
         if (status === 'labeled') labeled++;
         else if (status === 'skipped' || status.indexOf('would-label') === 0) skipped++;
+
+        // Agents hook (after label application)
+        if (typeof Agents !== 'undefined' && Agents && typeof Agents.runFor === 'function') {
+          var ctx = {
+            label: r.required_action,
+            decision: { required_action: r.required_action, reason: r.reason },
+            threadId: threadId,
+            thread: thread,
+            cfg: cfg,
+            dryRun: cfg.DRY_RUN,
+            log: function(msg) { if (cfg.DEBUG) console.log('agent log (' + threadId + '): ' + msg); }
+          };
+          var agentResults = Agents.runFor(r.required_action, ctx) || [];
+          for (var i = 0; i < agentResults.length; i++) {
+            var ar = agentResults[i];
+            if (ar.status === 'ok') agentOk++;
+            else if (ar.status === 'skip') agentSkip++;
+            else if (ar.status === 'retry') agentRetry++;
+            else agentError++;
+          }
+        }
       } catch (e) {
         errors++;
         console.log('Error labeling thread ' + threadId + ': ' + e);
       }
     }
-    return { candidates: results.length, labeled: labeled, skipped: skipped, errors: errors };
+    return { candidates: results.length, labeled: labeled, skipped: skipped, errors: errors, agents: { ok: agentOk, skip: agentSkip, retry: agentRetry, error: agentError } };
   }
 };
