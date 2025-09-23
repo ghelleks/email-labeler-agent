@@ -43,12 +43,20 @@ var Agents = (function() {
     var userProps = getUserProps_();
 
     for (var i = 0; i < list.length; i++) {
-      if (runCountThisExecution >= budget) {
-        results.push({ agent: list[i].name, status: 'skip', info: 'budget-exceeded' });
+      var item = list[i];
+
+      // Respect per-agent enabled flag (default: enabled)
+      var isEnabled = !(item.options && item.options.enabled === false);
+      if (!isEnabled) {
+        results.push({ agent: item.name, status: 'skip', info: 'disabled' });
         continue;
       }
 
-      var item = list[i];
+      if (runCountThisExecution >= budget) {
+        results.push({ agent: item.name, status: 'skip', info: 'budget-exceeded' });
+        continue;
+      }
+
       var runWhen = item.options && item.options.runWhen || 'afterLabel';
       var shouldSkipForDryRun = ctx.dryRun && runWhen !== 'always' && (cfg.AGENTS_DRY_RUN !== false);
       if (shouldSkipForDryRun) {

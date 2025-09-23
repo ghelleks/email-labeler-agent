@@ -47,7 +47,8 @@ AGENT_MODULES.push(function(api) {
     {
       idempotentKey: function(ctx) { return 'demoExampleAgent:' + ctx.threadId; },
       runWhen: 'afterLabel',
-      timeoutMs: 20000
+      timeoutMs: 20000,
+      enabled: false
     }
   );
 });
