@@ -1,132 +1,80 @@
 # Mail Screener — Gmail Labeler (Apps Script)
 
-A time-based Google Apps Script that labels Gmail threads using Gemini (Vertex AI or Generative Language API), guided by a user-editable rules document from Google Drive. Managed with `clasp`.
+A simple Google Apps Script that labels Gmail threads using Gemini (Generative Language API with an API key). You can guide it with a rules document in Google Drive. Managed with `clasp`.
 
-## Features
-- Four action labels: `reply_needed`, `review`, `todo`, `summarize` (auto-created)
-- Policy-driven triage using a Drive document (or a built-in default policy)
-- Vertex AI (OAuth) or Generative Language API (API key) support
-- Budget guard, batching, dry-run, and robust JSON parsing/normalization
+## What it does
+- Creates and uses four labels: `reply_needed`, `review`, `todo`, `summarize`
+- Reads your triage rules from a Google Doc (optional; ships with a sensible default)
+- Processes recent threads in batches and applies exactly one action label per thread
 
-## Prereqs
-- Node 18+, `@google/clasp` installed
-- Google account with access to target Gmail
-- For Vertex mode: access to a Google Cloud project with Vertex AI enabled
+## What you need
+- Node 18+ and `@google/clasp`
+- A Google account that can access the target Gmail account
+- A Gemini API key (Generative Language API)
 
 ```bash
 npm install -g @google/clasp
 clasp login --no-localhost
 ```
 
-## Project setup (first time)
+## Get an API key (one-time)
+1. In Google Cloud Console, enable "Generative Language API" on any project.
+2. Create an API key: APIs & Services → Credentials → Create credentials → API key.
+3. Copy the key. You will paste it into Script Properties as `GEMINI_API_KEY`.
+
+## Set up the project (first time)
 ```bash
-cd /Users/gunnarhellekson/Code/mail-screener
+cd /Users/gunnarhellekson/Code/email-labeler-agent
 clasp create --type standalone --title "Gmail Labeler (Mail Screener)" --rootDir ./src
-# (already done in this repo)
 ```
 
-Ensure `src/appsscript.json` includes:
-- `runtimeVersion: V8`
-- Scopes: gmail.modify, drive.readonly, script.external_request, script.scriptapp, cloud-platform
+1. Push and open the Apps Script project:
+   ```bash
+   clasp push
+   clasp open-script
+   ```
+2. In the Apps Script editor, set Script Properties (Project Settings → Script properties):
+   - `GEMINI_API_KEY` = your API key
+   - `RULE_DOC_URL` = optional Google Doc/Drive URL with your labeling rules
+   - Optional: `DRY_RUN=true` to preview without applying labels
+   - Optional: `DEBUG=true` for verbose logs
+3. In the editor, run the function `run()` once to authorize.
 
-## Auth modes
+## Schedule it (optional)
+- In the editor, run `installTrigger()` to install an hourly trigger (adjust later if you like).
 
-### 1) Vertex AI (recommended in Workspace)
-- Enable Vertex AI API on your Google Cloud project
-- Link the Apps Script project to that Cloud project (Apps Script → Project Settings → Google Cloud Platform project)
-- Set Script Properties:
-  - `GOOGLE_CLOUD_PROJECT` = your project ID or numeric project number
-  - `GOOGLE_CLOUD_LOCATION` = region like `us-central1`
-  - Optional: `DEBUG=true` for verbose logs
-- The script will use `ScriptApp.getOAuthToken()` to call Vertex:
-  - Endpoint: `https://LOCATION-aiplatform.googleapis.com/v1/projects/PROJECT/locations/LOCATION/publishers/google/models/gemini-1.5-flash:generateContent`
+## Configuration (optional; defaults shown)
+- `DEFAULT_FALLBACK_LABEL` = `review`
+- `MAX_EMAILS_PER_RUN` = `20`
+- `BATCH_SIZE` = `10`
+- `BODY_CHARS` = `1200`
+- `DAILY_GEMINI_BUDGET` = `50`
+- `DRY_RUN` = `false`
+- `DEBUG` = `false`
 
-Required permissions on the project for your user:
-- `roles/aiplatform.user`
-- If you use project ID and see `resourcemanager.projects.get` errors, use the numeric project number or request basic `roles/viewer`.
+You do not need to change models; it uses `gemini-1.5-flash` by default.
 
-### 2) Generative Language API (API key)
-- Enable "Generative Language API" on a project
-- Create an API key (APIs & Services → Credentials → Create credentials → API key)
-- Set Script Property:
-  - `GEMINI_API_KEY` = your key
-- The script will use the key to call:
-  - `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=API_KEY`
+## How it works (in short)
+1. Ensures labels exist.
+2. Loads your rules from Drive (or uses the built-in default).
+3. Finds recent threads that don’t already have an action label.
+4. Sends batched summaries to Gemini with your rules embedded.
+5. Parses the model’s JSON and applies one action label per thread.
 
-Note: Some organizations block this API; prefer Vertex if AI Studio is disabled.
+## Troubleshooting
+- Everything becomes `review`:
+  - Add clearer examples to your rules doc.
+  - Increase `BODY_CHARS` to give the model more context.
+- API key errors:
+  - Make sure "Generative Language API" is enabled and the key is valid.
+  - If your organization blocks API keys, contact your admin.
+- See logs: set `DEBUG=true` in Script Properties.
 
-## Rules document
-- Set one of the following Script Properties:
-  - `RULE_DOC_URL` = full Google Doc/Drive URL (preferred)
-  - `RULE_DOC_ID` = Drive file ID (legacy)
-- The content is embedded into the prompt as the triage policy.
-- If unset or unreadable, a built-in default policy is used.
-
-## Other Script Properties
-- `DEFAULT_FALLBACK_LABEL` (default `review`)
-- `MAX_EMAILS_PER_RUN` (default `20`)
-- `BATCH_SIZE` (default `10`)
-- `BODY_CHARS` (default `1200`)
-- `DAILY_GEMINI_BUDGET` (default `50`)
-- `DRY_RUN` (`true`/`false`, default `false`)
-- `DEBUG` (`true`/`false`, default `false`)
-
-## First run
+## Update the script
 ```bash
 clasp push
-clasp open
-# In the editor, set Script Properties (Project Settings → Script properties)
-# Run the function `run()` once to authorize scopes
-```
-
-If using Vertex:
-- Ensure the Cloud project is correctly linked in Apps Script
-- Use the numeric project number in `GOOGLE_CLOUD_PROJECT` if you lack resourcemanager.get
-
-## Scheduling
-- In the editor, run `installTrigger()` once to install hourly execution (adjust as needed)
-
-## How it works
-1. Ensures labels exist
-2. Loads rules text from Drive (or default policy)
-3. Queries inbox for threads without action labels (limit by `MAX_EMAILS_PER_RUN`)
-4. Extracts the last message (subject/from/date/body excerpt)
-5. Batches and sends to Gemini with the policy embedded
-6. Parses JSON: for each email → `{ id, required_action, reason }`
-7. Normalizes the label, falls back on errors, applies exactly one label per thread
-8. Logs a summary
-
-## Debugging
-- Set `DEBUG=true`
-- Logs include:
-  - Request mode (Vertex vs API key), HTTP status, raw response
-  - Raw LLM outputs for each batch
-  - Normalized `required_action`
-  - Per-thread applied label and reason
-
-Common issues:
-- Everything labeled `review`:
-  - Check DEBUG logs to confirm LLM output values
-  - Ensure policy text includes clear examples
-  - Increase `BODY_CHARS` if needed, or add examples to your rules doc
-- Permission errors with Vertex:
-  - Use numeric project number in `GOOGLE_CLOUD_PROJECT`
-  - Request `roles/aiplatform.user` and possibly project viewer
-
-## Updating
-- Make edits, then:
-```bash
-clasp push
-```
-
-## Versioning/deployments
-```bash
-clasp version "Stable v1"
-# If you later expose web endpoints:
-clasp deploy --description "v1 labeling"
 ```
 
 ## Uninstall / cleanup
-- Delete time-based triggers via `deleteExistingTriggers_()` or the UI
-- Remove Script Properties if needed
-- Unlink GCP project from Apps Script if you’re done
+- Remove time-based triggers via `deleteExistingTriggers_()` or the Apps Script UI.
+- Delete Script Properties if you’re done.

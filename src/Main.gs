@@ -1,6 +1,7 @@
 function run() {
   const cfg = getConfig_();
-  if (!cfg.PROJECT_ID) throw new Error('GOOGLE_CLOUD_PROJECT (PROJECT_ID) is not set.');
+  const usingApiKey = !!cfg.GEMINI_API_KEY;
+  if (!usingApiKey && !cfg.PROJECT_ID) throw new Error('Set GEMINI_API_KEY (API key mode) or GOOGLE_CLOUD_PROJECT (Vertex mode).');
   ensureLabels_();
 
   const rulesText = getRuleText_(cfg.RULE_DOC_URL || cfg.RULE_DOC_ID);
