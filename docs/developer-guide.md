@@ -120,6 +120,71 @@ deleteExistingTriggers_();
 - Adjust label set by editing `ensureLabels_()` and normalization in `Categorizer.gs`.
 - Modify `BATCH_SIZE` and `BODY_CHARS` to trade off cost vs. context.
 
+## Writing Agents
+Agents let you plug in post-label actions (e.g., create a draft for `reply_needed`, forward `todo` items elsewhere) without changing core triage code.
+
+### Where to put your agents
+- Create a new file (e.g., `MyAgents.gs`) in `src/`.
+- Define a global `registerAgents()` function. It is called at the start of `run()` if present.
+
+### Registering an agent
+```javascript
+// In MyAgents.gs
+function registerAgents() {
+  Agents.register(
+    'todo',            // label to respond to
+    'forwarder',       // unique agent name
+    function(ctx) {    // handler
+      if (ctx.dryRun) return { status: 'skip', info: 'dry-run' };
+      // do work here (e.g., UrlFetchApp.fetch(...))
+      return { status: 'ok', info: 'forwarded' };
+    },
+    {
+      // optional settings
+      idempotentKey: function(ctx) { return 'forwarder:' + ctx.threadId; },
+      runWhen: 'afterLabel', // or 'always' to ignore dry-run gating
+      timeoutMs: 20000
+    }
+  );
+}
+```
+
+### Handler contract
+The handler receives an `AgentContext` and returns an `AgentResult`.
+
+- Context (`ctx`):
+  - `label`: one of `reply_needed|review|todo|summarize`
+  - `decision`: `{ required_action, reason }` as decided by the model
+  - `threadId`: Gmail thread ID
+  - `thread`: `GmailThread` (already fetched)
+  - `cfg`: result of `getConfig_()` (includes `AGENTS_*` values)
+  - `dryRun`: boolean; mirrors `DRY_RUN`
+  - `log(msg)`: convenience logger that emits only when `DEBUG=true`
+
+- Return (`AgentResult`):
+  - `status`: `ok | skip | retry | error`
+  - `info?`: string for human-readable details
+  - `retryAfterMs?`: suggest a delay before retry (informational; scheduling is deferred to future enhancements)
+
+### Idempotency
+- Default key: `${name}:${threadId}`; once an agent returns `ok`, it will not run again for that thread.
+- Override with `options.idempotentKey(ctx)` if you need finer control.
+
+### Dry-run behavior
+- If `DRY_RUN=true`, agents are skipped by default with `status: 'skip'`.
+- To force execution in dry-run (for testing), set `runWhen: 'always'` in the agent options or set `AGENTS_DRY_RUN=false` in Script Properties to disable dry-run skipping for all agents.
+
+### Budgets and filters
+- `AGENTS_BUDGET_PER_RUN` (default `50`): maximum agent executions per `run()`.
+- `AGENTS_LABEL_MAP` (JSON): optional allowlist of agent names per label, e.g.:
+  ```json
+  { "todo": ["forwarder"], "reply_needed": ["draftReply"] }
+  ```
+
+### Observability
+- `Organizer.apply_()` aggregates agent outcomes in the final summary: `{ agents: { ok, skip, retry, error } }`.
+- Use `ctx.log('message')` to add per-agent debug logs gated by `DEBUG=true`.
+
 ## Code Pointers
 - Configuration shape is defined in `getConfig_()`:
 ```text
