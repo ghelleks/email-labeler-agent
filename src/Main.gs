@@ -2,6 +2,24 @@ function run() {
   const cfg = getConfig_();
   const usingApiKey = !!cfg.GEMINI_API_KEY;
   if (!usingApiKey && !cfg.PROJECT_ID) throw new Error('Set GEMINI_API_KEY (API key mode) or GOOGLE_CLOUD_PROJECT (Vertex mode).');
+
+  // First, load any agent modules queued in AGENT_MODULES
+  try {
+    if (typeof Agents !== 'undefined' && Agents && typeof Agents.registerAllModules === 'function') {
+      Agents.registerAllModules();
+    }
+  } catch (e) {
+    if (cfg.DEBUG) console.log('registerAllModules() error: ' + (e && e.toString ? e.toString() : String(e)));
+  }
+
+  // Optional agent registration hook
+  try {
+    if (typeof registerAgents === 'function') {
+      registerAgents();
+    }
+  } catch (e) {
+    if (cfg.DEBUG) console.log('registerAgents() error: ' + (e && e.toString ? e.toString() : String(e)));
+  }
   ensureLabels_();
 
   const rulesText = getRuleText_(cfg.RULE_DOC_URL || cfg.RULE_DOC_ID);

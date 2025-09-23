@@ -1,0 +1,23 @@
+{
+  "name": "email-labeler-agent",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "create": "clasp create --type standalone --title \"Gmail Labeler (Mail Screener)\" --rootDir ./src",
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "open": "clasp open-script",
+    "status": "clasp status",
+    "logs": "clasp logs --watch",
+    "open:logs": "clasp open-logs",
+    "version": "clasp version \"stable\"",
+    "deploy": "clasp deploy --description \"v1\"",
+    "run": "clasp run run",
+    "trigger:install": "clasp run installTrigger",
+    "trigger:delete": "clasp run deleteExistingTriggers_"
+  },
+  "devDependencies": {}
+}
+
+
