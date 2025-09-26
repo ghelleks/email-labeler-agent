@@ -13,17 +13,15 @@ function getConfig_() {
     DAILY_GEMINI_BUDGET: parseInt(p.getProperty('DAILY_GEMINI_BUDGET') || '50', 10),
     DRY_RUN: (p.getProperty('DRY_RUN') || 'false').toLowerCase() === 'true',
     DEBUG: (p.getProperty('DEBUG') || 'false').toLowerCase() === 'true',
-    MODEL_PRIMARY: 'gemini-1.5-flash',
-    MODEL_ESCALATE: 'gemini-1.5-pro',
+    MODEL_PRIMARY: 'gemini-2.5-flash',
+    MODEL_ESCALATE: 'gemini-2.5-pro',
     // Agents framework
     AGENTS_ENABLED: (p.getProperty('AGENTS_ENABLED') || 'true').toLowerCase() === 'true',
     AGENTS_DRY_RUN: (p.getProperty('AGENTS_DRY_RUN') || '').toLowerCase() === 'true' ? true : ((p.getProperty('AGENTS_DRY_RUN') || '').toLowerCase() === 'false' ? false : null),
     AGENTS_BUDGET_PER_RUN: parseInt(p.getProperty('AGENTS_BUDGET_PER_RUN') || '50', 10),
     AGENTS_LABEL_MAP: (function(){
       try { return JSON.parse(p.getProperty('AGENTS_LABEL_MAP') || 'null'); } catch (e) { return null; }
-    })(),
-    // Forwarding agent
-    FORWARDING_LABEL: p.getProperty('FORWARDING_LABEL') || 'todo:forward'
+    })()
   };
 }
 
