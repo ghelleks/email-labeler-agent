@@ -198,6 +198,61 @@
             transform: scale(0.98);
         }
 
+        /* Enhanced mobile optimization */
+        @media screen and (max-width: 480px) {
+            .main-container {
+                padding: 16px;
+                max-width: 100%;
+            }
+
+            .header h1 {
+                font-size: 18px;
+            }
+
+            .content-area {
+                padding: 20px;
+                margin: 16px 0;
+            }
+
+            .btn-touch {
+                height: 60px; /* Slightly larger for small screens */
+                font-size: 17px;
+            }
+        }
+
+        /* Enhanced touch interaction */
+        .btn-touch:focus {
+            outline: 3px solid rgba(0, 122, 255, 0.5);
+            outline-offset: 2px;
+        }
+
+        /* Improved status message styling */
+        .status-message {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Enhanced error state styling */
+        .status-error {
+            border-left: 4px solid #dc3545;
+        }
+
+        .status-success {
+            border-left: 4px solid #28a745;
+        }
+
+        .status-loading {
+            border-left: 4px solid #007bff;
+        }
+
+        .status-info {
+            border-left: 4px solid #6f42c1;
+        }
+
         /* Accessibility improvements */
         @media (prefers-reduced-motion: reduce) {
             .btn-touch {
@@ -210,6 +265,25 @@
 
             .spinner {
                 animation: none;
+            }
+
+            .status-message {
+                animation: none;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            .btn-primary-touch {
+                border: 2px solid #000;
+            }
+
+            .btn-success-touch {
+                border: 2px solid #000;
+            }
+
+            .status-message {
+                border: 2px solid;
             }
         }
 
@@ -271,18 +345,74 @@
     <script>
         let currentEmailCount = 0;
         let isProcessing = false;
+        let retryCount = 0;
+        const MAX_RETRIES = 2;
 
-        function showStatus(message, type = 'loading') {
+        function showStatus(message, type = 'loading', showRetry = false) {
             const statusEl = document.getElementById('statusMessage');
             const spinner = type === 'loading' ? '<span class="spinner"></span>' : '';
+            const retryButton = showRetry ?
+                `<br><button onclick="retrySummary()" style="margin-top: 8px; padding: 4px 12px; background: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer;">Try Again</button>` : '';
 
-            statusEl.innerHTML = spinner + message;
+            statusEl.innerHTML = spinner + message + retryButton;
             statusEl.className = `status-message status-${type}`;
             statusEl.classList.remove('hidden');
         }
 
         function hideStatus() {
             document.getElementById('statusMessage').classList.add('hidden');
+        }
+
+        function showDetailedError(errorType, details) {
+            let message = '';
+            let showRetry = false;
+
+            switch (errorType) {
+                case 'network':
+                    message = 'Network connection issue. Please check your internet connection and try again.';
+                    showRetry = true;
+                    break;
+                case 'quota':
+                    message = 'Daily AI quota exceeded. Please try again tomorrow or contact your administrator.';
+                    break;
+                case 'permission':
+                    message = 'Permission denied. Please refresh the page and re-authorize the app.';
+                    showRetry = true;
+                    break;
+                case 'timeout':
+                    message = 'Request timed out. This may happen with large email batches. Try reducing the number of emails or try again.';
+                    showRetry = true;
+                    break;
+                case 'disabled':
+                    message = 'Web app functionality is currently disabled. Please contact your administrator.';
+                    break;
+                default:
+                    message = `Error: ${details}`;
+                    showRetry = retryCount < MAX_RETRIES;
+            }
+
+            showStatus(message, 'error', showRetry);
+        }
+
+        function categorizeError(errorMessage) {
+            const error = errorMessage.toLowerCase();
+
+            if (error.includes('network') || error.includes('connection') || error.includes('fetch')) {
+                return 'network';
+            }
+            if (error.includes('quota') || error.includes('budget') || error.includes('limit')) {
+                return 'quota';
+            }
+            if (error.includes('permission') || error.includes('authorization') || error.includes('auth')) {
+                return 'permission';
+            }
+            if (error.includes('timeout') || error.includes('time out')) {
+                return 'timeout';
+            }
+            if (error.includes('disabled') || error.includes('not enabled')) {
+                return 'disabled';
+            }
+            return 'generic';
         }
 
         function updateButtonState(button, disabled, text) {
@@ -348,18 +478,29 @@
             updateButtonState(getSummaryBtn, true, 'Processing...');
             showStatus('Scanning emails with "summarize" label...', 'loading');
 
+            // Add connection check
+            if (!navigator.onLine) {
+                isProcessing = false;
+                updateButtonState(getSummaryBtn, false, 'Get Summary');
+                showDetailedError('network', 'No internet connection detected');
+                return;
+            }
+
             google.script.run
                 .withSuccessHandler(function(response) {
                     isProcessing = false;
+                    retryCount = 0; // Reset retry count on success
                     updateButtonState(getSummaryBtn, false, 'Get Summary');
 
                     if (!response.success) {
-                        showStatus('Error: ' + response.error, 'error');
+                        const errorType = categorizeError(response.error || '');
+                        showDetailedError(errorType, response.error);
                         return;
                     }
 
                     if (response.emailCount === 0) {
-                        showStatus(response.message || 'No emails found with "summarize" label', 'info');
+                        showStatus(response.message ||
+                            'No emails found with "summarize" label. Apply the label to some emails in Gmail first.', 'info');
                         return;
                     }
 
@@ -372,16 +513,33 @@
                 .withFailureHandler(function(error) {
                     isProcessing = false;
                     updateButtonState(getSummaryBtn, false, 'Get Summary');
-                    showStatus('Failed to get summary: ' + error.toString(), 'error');
+
+                    const errorType = categorizeError(error.toString());
+                    showDetailedError(errorType, error.toString());
+
+                    retryCount++;
                 })
                 .summarizeEmails();
+        }
+
+        function retrySummary() {
+            if (retryCount < MAX_RETRIES) {
+                hideStatus();
+                setTimeout(getSummary, 1000); // Wait 1 second before retry
+            }
         }
 
         function archiveEmails() {
             if (isProcessing || currentEmailCount === 0) return;
 
             const emailText = currentEmailCount === 1 ? 'email' : 'emails';
-            if (!confirm(`Archive ${currentEmailCount} ${emailText}? This action cannot be undone.`)) {
+            if (!confirm(`Archive ${currentEmailCount} ${emailText}?\n\nThis will:\n• Remove the "summarize" label\n• Move emails to Archive folder\n• Clear the current summary\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            // Connection check
+            if (!navigator.onLine) {
+                showDetailedError('network', 'No internet connection detected');
                 return;
             }
 
@@ -396,36 +554,113 @@
                     updateButtonState(archiveBtn, false, 'Archive Emails');
 
                     if (!response.success) {
-                        showStatus('Error archiving: ' + response.error, 'error');
+                        const errorType = categorizeError(response.error || '');
+                        showDetailedError(errorType, response.error);
                         return;
                     }
 
-                    showStatus(response.message || `Successfully archived ${currentEmailCount} ${emailText}`, 'success');
+                    // Enhanced success feedback
+                    const archivedCount = response.archivedCount || currentEmailCount;
+                    const successMessage = archivedCount === currentEmailCount ?
+                        `Successfully archived ${archivedCount} ${emailText}` :
+                        `Archived ${archivedCount} of ${currentEmailCount} ${emailText}. Some emails may have already been processed.`;
+
+                    showStatus(successMessage, 'success');
                     clearContent();
 
-                    // Auto-hide success message after 3 seconds
-                    setTimeout(hideStatus, 3000);
+                    // Auto-hide success message after 4 seconds (longer for archive confirmation)
+                    setTimeout(hideStatus, 4000);
                 })
                 .withFailureHandler(function(error) {
                     isProcessing = false;
                     updateButtonState(archiveBtn, false, 'Archive Emails');
-                    showStatus('Failed to archive emails: ' + error.toString(), 'error');
+
+                    const errorType = categorizeError(error.toString());
+                    showDetailedError(errorType, error.toString());
                 })
                 .archiveProcessedEmails();
         }
 
+        // Network connectivity monitoring
+        function checkConnectivity() {
+            if (!navigator.onLine) {
+                showStatus('You are currently offline. Some features may not work.', 'error');
+            }
+        }
+
         // Initialize the interface
         document.addEventListener('DOMContentLoaded', function() {
-            showStatus('Ready to process emails', 'success');
-            setTimeout(hideStatus, 2000);
+            // Check initial connectivity
+            if (navigator.onLine) {
+                showStatus('Ready to process emails', 'success');
+                setTimeout(hideStatus, 2000);
+            } else {
+                showStatus('You are currently offline. Please check your internet connection.', 'error');
+            }
+
+            // Add connectivity listeners
+            window.addEventListener('online', function() {
+                showStatus('Connection restored. You can now process emails.', 'success');
+                setTimeout(hideStatus, 3000);
+            });
+
+            window.addEventListener('offline', function() {
+                showStatus('You are now offline. Some features may not work.', 'error');
+            });
         });
 
-        // Add keyboard shortcuts for accessibility
+        // Enhanced keyboard shortcuts for accessibility
         document.addEventListener('keydown', function(e) {
+            // Enter key on buttons
             if (e.key === 'Enter' && e.target.tagName === 'BUTTON') {
                 e.target.click();
             }
+
+            // Escape key to cancel/hide status
+            if (e.key === 'Escape') {
+                if (!isProcessing) {
+                    hideStatus();
+                }
+            }
+
+            // Keyboard shortcuts (with Ctrl/Cmd)
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'r':
+                        e.preventDefault();
+                        if (!isProcessing) {
+                            getSummary();
+                        }
+                        break;
+                    case 'a':
+                        e.preventDefault();
+                        if (!isProcessing && currentEmailCount > 0) {
+                            archiveEmails();
+                        }
+                        break;
+                }
+            }
         });
+
+        // Enhanced error logging for debugging
+        window.addEventListener('error', function(e) {
+            console.error('Web App Error:', e.error);
+            if (!isProcessing) {
+                showStatus('An unexpected error occurred. Please refresh the page and try again.', 'error');
+            }
+        });
+
+        // Add focus management for better accessibility
+        function manageFocus() {
+            const getSummaryBtn = document.getElementById('getSummaryBtn');
+            const archiveBtn = document.getElementById('archiveBtn');
+
+            if (!archiveBtn.classList.contains('hidden')) {
+                archiveBtn.focus();
+            } else {
+                getSummaryBtn.focus();
+            }
+        }
     </script>
 </body>
 </html>

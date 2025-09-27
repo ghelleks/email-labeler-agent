@@ -7,12 +7,23 @@
 
 /**
  * Required function for Google Apps Script web app deployment
- * Serves the main HTML interface
+ * Serves the main HTML interface with security controls
  */
 function doGet(e) {
+  // Security: Validate that this is being accessed by the authorized user
+  const userEmail = Session.getActiveUser().getEmail();
+  if (!userEmail) {
+    return HtmlService.createHtmlOutput('<h1>Access Denied</h1><p>Authentication required.</p>')
+      .setTitle('Access Denied')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DENY);
+  }
+
+  // Security: Log access for audit trail
+  console.log(`Web app accessed by: ${userEmail} at ${new Date().toISOString()}`);
+
   return HtmlService.createHtmlOutputFromFile('WebApp')
     .setTitle('Email Agent Dashboard')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DENY); // Prevent embedding in frames
 }
 
 /**
@@ -21,12 +32,30 @@ function doGet(e) {
  */
 function summarizeEmails() {
   try {
+    // Security: Verify user authentication
+    const userEmail = Session.getActiveUser().getEmail();
+    if (!userEmail) {
+      return {
+        success: false,
+        error: 'Authentication required. Please refresh and sign in.'
+      };
+    }
+
     const cfg = getConfig_();
 
     if (!cfg.WEBAPP_ENABLED) {
       return {
         success: false,
         error: 'Web app functionality is disabled in configuration'
+      };
+    }
+
+    // Security: Rate limiting check
+    if (!enforceBudget_(1, cfg.DAILY_GEMINI_BUDGET)) {
+      console.log(`Rate limit exceeded for user: ${userEmail}`);
+      return {
+        success: false,
+        error: 'Daily AI budget exceeded. Please try again tomorrow.'
       };
     }
 
@@ -123,6 +152,15 @@ function summarizeEmails() {
  */
 function archiveProcessedEmails() {
   try {
+    // Security: Verify user authentication
+    const userEmail = Session.getActiveUser().getEmail();
+    if (!userEmail) {
+      return {
+        success: false,
+        error: 'Authentication required. Please refresh and sign in.'
+      };
+    }
+
     const cfg = getConfig_();
 
     if (!cfg.WEBAPP_ENABLED) {
@@ -141,11 +179,34 @@ function archiveProcessedEmails() {
       };
     }
 
-    const emailIds = JSON.parse(storedIds);
-    if (!emailIds || emailIds.length === 0) {
+    // Security: Validate JSON data
+    let emailIds;
+    try {
+      emailIds = JSON.parse(storedIds);
+    } catch (parseError) {
+      console.log(`JSON parse error for user ${userEmail}: ${parseError.toString()}`);
+      // Clear corrupted data
+      PropertiesService.getScriptProperties().deleteProperty('WEBAPP_PENDING_ARCHIVE_IDS');
+      return {
+        success: false,
+        error: 'Invalid archive data detected. Please generate a new summary.'
+      };
+    }
+
+    if (!emailIds || !Array.isArray(emailIds) || emailIds.length === 0) {
       return {
         success: false,
         error: 'No email IDs found for archiving'
+      };
+    }
+
+    // Security: Validate email ID format (basic sanity check)
+    const invalidIds = emailIds.filter(id => typeof id !== 'string' || id.length < 10);
+    if (invalidIds.length > 0) {
+      console.log(`Invalid email IDs detected for user ${userEmail}: ${invalidIds.length} invalid IDs`);
+      return {
+        success: false,
+        error: 'Invalid email IDs detected. Please generate a new summary.'
       };
     }
 
@@ -174,6 +235,15 @@ function archiveProcessedEmails() {
  */
 function getEmailStatus() {
   try {
+    // Security: Verify user authentication
+    const userEmail = Session.getActiveUser().getEmail();
+    if (!userEmail) {
+      return {
+        success: false,
+        error: 'Authentication required. Please refresh and sign in.'
+      };
+    }
+
     const cfg = getConfig_();
 
     if (!cfg.WEBAPP_ENABLED) {
@@ -189,9 +259,20 @@ function getEmailStatus() {
       return discovery;
     }
 
-    // Check if there are pending emails to archive
+    // Check if there are pending emails to archive with safe parsing
+    let pendingArchiveCount = 0;
     const storedIds = PropertiesService.getScriptProperties().getProperty('WEBAPP_PENDING_ARCHIVE_IDS');
-    const pendingArchiveCount = storedIds ? JSON.parse(storedIds).length : 0;
+    if (storedIds) {
+      try {
+        const parsedIds = JSON.parse(storedIds);
+        pendingArchiveCount = Array.isArray(parsedIds) ? parsedIds.length : 0;
+      } catch (parseError) {
+        console.log(`JSON parse error in getEmailStatus for user ${userEmail}: ${parseError.toString()}`);
+        // Clear corrupted data
+        PropertiesService.getScriptProperties().deleteProperty('WEBAPP_PENDING_ARCHIVE_IDS');
+        pendingArchiveCount = 0;
+      }
+    }
 
     return {
       success: true,
