@@ -28,9 +28,10 @@ All ADRs in this project follow a consistent format defined in [template.md](tem
 - [ADR-007: Google Drive Rules Document Integration](007-drive-rules-integration.md)
 
 ### Implementation Details (Lower Priority)
-- ADR-008: Apps Script V8 Runtime Selection (planned)
-- ADR-009: Clasp-Based Development Workflow (planned)
-- ADR-010: Idempotency and State Management (planned)
+- [ADR-008: Interactive Web App Integration for Email Agent Dashboard](008-interactive-web-app-integration.md)
+- ADR-009: Apps Script V8 Runtime Selection (planned)
+- ADR-010: Clasp-Based Development Workflow (planned)
+- ADR-011: Idempotency and State Management (planned)
 
 ## Status Legend
 

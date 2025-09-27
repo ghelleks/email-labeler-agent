@@ -21,7 +21,10 @@ function getConfig_() {
     AGENTS_BUDGET_PER_RUN: parseInt(p.getProperty('AGENTS_BUDGET_PER_RUN') || '50', 10),
     AGENTS_LABEL_MAP: (function(){
       try { return JSON.parse(p.getProperty('AGENTS_LABEL_MAP') || 'null'); } catch (e) { return null; }
-    })()
+    })(),
+    // Web App Configuration
+    WEBAPP_ENABLED: (p.getProperty('WEBAPP_ENABLED') || 'true').toLowerCase() === 'true',
+    WEBAPP_MAX_EMAILS_PER_SUMMARY: parseInt(p.getProperty('WEBAPP_MAX_EMAILS_PER_SUMMARY') || '25', 10)
   };
 }
 

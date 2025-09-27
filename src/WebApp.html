@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Email Agent Dashboard</title>
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .main-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #666;
+            margin: 0;
+        }
+
+        /* Touch-optimized buttons - 56px height per iOS/Android standards */
+        .btn-touch {
+            height: 56px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            border: none;
+            width: 100%;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary-touch {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .btn-primary-touch:hover:not(:disabled) {
+            background-color: #0056CC;
+            transform: translateY(-1px);
+        }
+
+        .btn-success-touch {
+            background-color: #28A745;
+            color: white;
+        }
+
+        .btn-success-touch:hover:not(:disabled) {
+            background-color: #1e7e34;
+            transform: translateY(-1px);
+        }
+
+        .btn-touch:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Content area */
+        .content-area {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
+            min-height: 200px;
+        }
+
+        .summary-content {
+            line-height: 1.6;
+            font-size: 15px;
+            color: #333;
+        }
+
+        .summary-content strong {
+            color: #007AFF;
+        }
+
+        .email-links {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .email-links h6 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .email-link {
+            display: block;
+            color: #007AFF;
+            text-decoration: none;
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .email-link:hover {
+            background: #e9ecef;
+            text-decoration: none;
+            color: #0056CC;
+        }
+
+        /* Status messages */
+        .status-message {
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+        }
+
+        .status-success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .status-error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .status-info {
+            background: #f3e5f5;
+            color: #7b1fa2;
+            border: 1px solid #e1bee7;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007AFF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Stats display */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin: 16px 0;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* iOS-style haptic feedback simulation */
+        .btn-touch:active {
+            transform: scale(0.98);
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            .btn-touch {
+                transition: none;
+            }
+
+            .btn-touch:hover:not(:disabled) {
+                transform: none;
+            }
+
+            .spinner {
+                animation: none;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #000;
+                color: #fff;
+            }
+
+            .content-area {
+                background: #1c1c1e;
+                color: #fff;
+            }
+
+            .email-link {
+                background: #2c2c2e;
+                color: #007AFF;
+            }
+
+            .email-link:hover {
+                background: #3a3a3c;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Email Dashboard</h1>
+            <p>On-demand email summarization and archiving</p>
+        </div>
+
+        <!-- Primary Action Button -->
+        <button id="getSummaryBtn" class="btn-touch btn-primary-touch" onclick="getSummary()">
+            <span id="getSummaryText">Get Summary</span>
+        </button>
+
+        <!-- Status Messages -->
+        <div id="statusMessage" class="hidden"></div>
+
+        <!-- Content Area -->
+        <div id="contentArea" class="content-area hidden">
+            <div id="summaryContent" class="summary-content"></div>
+            <div id="emailLinks" class="email-links hidden"></div>
+            <div id="stats" class="stats hidden"></div>
+        </div>
+
+        <!-- Archive Button (shown after summary) -->
+        <button id="archiveBtn" class="btn-touch btn-success-touch hidden" onclick="archiveEmails()">
+            <span id="archiveText">Archive Emails</span>
+        </button>
+    </div>
+
+    <!-- Bootstrap 5 JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+
+    <script>
+        let currentEmailCount = 0;
+        let isProcessing = false;
+
+        function showStatus(message, type = 'loading') {
+            const statusEl = document.getElementById('statusMessage');
+            const spinner = type === 'loading' ? '<span class="spinner"></span>' : '';
+
+            statusEl.innerHTML = spinner + message;
+            statusEl.className = `status-message status-${type}`;
+            statusEl.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            document.getElementById('statusMessage').classList.add('hidden');
+        }
+
+        function updateButtonState(button, disabled, text) {
+            button.disabled = disabled;
+            const textEl = button.querySelector('span');
+            if (textEl) textEl.textContent = text;
+        }
+
+        function showContent(summaryData) {
+            const contentArea = document.getElementById('contentArea');
+            const summaryContent = document.getElementById('summaryContent');
+            const emailLinks = document.getElementById('emailLinks');
+            const stats = document.getElementById('stats');
+            const archiveBtn = document.getElementById('archiveBtn');
+            const archiveText = document.getElementById('archiveText');
+
+            // Display the AI-generated summary with bold formatting
+            summaryContent.innerHTML = summaryData.summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            // Display email links if available
+            if (summaryData.emailLinks && summaryData.emailLinks.length > 0) {
+                emailLinks.innerHTML = `
+                    <h6>Source Emails (${summaryData.emailLinks.length}):</h6>
+                    ${summaryData.emailLinks.map(link =>
+                        `<a href="${link.url}" class="email-link" target="_blank">${link.subject}</a>`
+                    ).join('')}
+                `;
+                emailLinks.classList.remove('hidden');
+            }
+
+            // Show stats
+            stats.innerHTML = `
+                <span>Processed: ${summaryData.processedCount || summaryData.emailCount}</span>
+                <span>Found: ${summaryData.totalFound || summaryData.emailCount}</span>
+            `;
+            stats.classList.remove('hidden');
+
+            // Update archive button with exact count
+            currentEmailCount = summaryData.emailCount;
+            const emailText = currentEmailCount === 1 ? 'Email' : 'Emails';
+            archiveText.textContent = `Archive ${currentEmailCount} ${emailText}`;
+
+            // Show content and archive button
+            contentArea.classList.remove('hidden');
+            archiveBtn.classList.remove('hidden');
+        }
+
+        function clearContent() {
+            document.getElementById('contentArea').classList.add('hidden');
+            document.getElementById('archiveBtn').classList.add('hidden');
+            document.getElementById('emailLinks').classList.add('hidden');
+            document.getElementById('stats').classList.add('hidden');
+            currentEmailCount = 0;
+        }
+
+        function getSummary() {
+            if (isProcessing) return;
+
+            isProcessing = true;
+            clearContent();
+
+            const getSummaryBtn = document.getElementById('getSummaryBtn');
+            updateButtonState(getSummaryBtn, true, 'Processing...');
+            showStatus('Scanning emails with "summarize" label...', 'loading');
+
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    isProcessing = false;
+                    updateButtonState(getSummaryBtn, false, 'Get Summary');
+
+                    if (!response.success) {
+                        showStatus('Error: ' + response.error, 'error');
+                        return;
+                    }
+
+                    if (response.emailCount === 0) {
+                        showStatus(response.message || 'No emails found with "summarize" label', 'info');
+                        return;
+                    }
+
+                    showStatus(`Found ${response.emailCount} emails. Generated summary successfully!`, 'success');
+                    showContent(response);
+
+                    // Auto-hide success message after 3 seconds
+                    setTimeout(hideStatus, 3000);
+                })
+                .withFailureHandler(function(error) {
+                    isProcessing = false;
+                    updateButtonState(getSummaryBtn, false, 'Get Summary');
+                    showStatus('Failed to get summary: ' + error.toString(), 'error');
+                })
+                .summarizeEmails();
+        }
+
+        function archiveEmails() {
+            if (isProcessing || currentEmailCount === 0) return;
+
+            const emailText = currentEmailCount === 1 ? 'email' : 'emails';
+            if (!confirm(`Archive ${currentEmailCount} ${emailText}? This action cannot be undone.`)) {
+                return;
+            }
+
+            isProcessing = true;
+            const archiveBtn = document.getElementById('archiveBtn');
+            updateButtonState(archiveBtn, true, 'Archiving...');
+            showStatus(`Archiving ${currentEmailCount} ${emailText}...`, 'loading');
+
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    isProcessing = false;
+                    updateButtonState(archiveBtn, false, 'Archive Emails');
+
+                    if (!response.success) {
+                        showStatus('Error archiving: ' + response.error, 'error');
+                        return;
+                    }
+
+                    showStatus(response.message || `Successfully archived ${currentEmailCount} ${emailText}`, 'success');
+                    clearContent();
+
+                    // Auto-hide success message after 3 seconds
+                    setTimeout(hideStatus, 3000);
+                })
+                .withFailureHandler(function(error) {
+                    isProcessing = false;
+                    updateButtonState(archiveBtn, false, 'Archive Emails');
+                    showStatus('Failed to archive emails: ' + error.toString(), 'error');
+                })
+                .archiveProcessedEmails();
+        }
+
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            showStatus('Ready to process emails', 'success');
+            setTimeout(hideStatus, 2000);
+        });
+
+        // Add keyboard shortcuts for accessibility
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.tagName === 'BUTTON') {
+                e.target.click();
+            }
+        });
+    </script>
+</body>
+</html>
