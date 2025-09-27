@@ -21,9 +21,9 @@ npm run status            # Check sync status between local and remote
 
 ### Testing and Execution
 ```bash
-npm run run               # Execute the main run() function manually
 npm run logs              # Watch live execution logs from Apps Script
 npm run open:logs         # Open Apps Script logs in browser
+npm run open              # Open Apps Script editor for manual execution
 ```
 
 ### Trigger Management

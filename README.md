@@ -238,7 +238,6 @@ Once set up, these commands help you manage your project:
 npm run push          # Upload code changes to Apps Script
 npm run open          # Open Apps Script editor in browser
 npm run logs          # Watch live execution logs
-npm run run           # Run the script manually
 npm run status        # Check sync status between local and remote
 ```
 
