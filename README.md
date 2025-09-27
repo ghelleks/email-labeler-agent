@@ -28,34 +28,6 @@ This system automatically reads your incoming Gmail and sorts it into four actio
 
 **Ready?** Follow the setup guide below. You can stop after the basic setup and add advanced features anytime.
 
-## Choose Your Setup Path
-
-**New in 2024**: This project now supports **multi-account deployment**, allowing you to manage the same email automation across multiple Google accounts (personal, work, etc.) from one codebase.
-
-### 📍 Choose Your Setup Method:
-
-**🎯 Single Account Setup (Recommended for beginners)**
-- Perfect if you have one Gmail account to organize
-- Simpler setup process with fewer steps
-- All existing documentation and tutorials apply
-- Can upgrade to multi-account later without losing work
-
-**🎯 Multi-Account Setup (Recommended for advanced users)**
-- Ideal if you manage multiple Gmail accounts (personal + work)
-- Deploy and manage the same email automation across all accounts
-- Switch between accounts with simple commands
-- Requires understanding of Google Apps Script project IDs
-
-**Decision Help:**
-- **Choose Single Account if**: You have one Gmail account OR want the simplest setup
-- **Choose Multi-Account if**: You manage 2+ Gmail accounts OR work with team deployments
-
-### Single Account Setup (Standard)
-Continue with the setup guide below - this is the traditional approach that works great for most users.
-
-### Multi-Account Setup (Advanced)
-If you chose multi-account, jump to the [Multi-Account Setup Guide](#multi-account-setup-advanced) after completing the prerequisites below.
-
 ## Prerequisites
 
 Before you start, make sure you have:
@@ -225,6 +197,19 @@ In the Apps Script editor, configure your project:
 3. Check your Gmail — you should see new labels created: `reply_needed`, `review`, `todo`, `summarize`
 
 If you set `DRY_RUN=true`, the script will analyze emails but won't apply labels yet (recommended for testing).
+
+## Optional: Schedule Automatic Processing
+
+To have the script run automatically every hour, triggers must be installed manually due to permission limitations:
+
+### Trigger Installation Process
+1. Open the Apps Script editor: `npm run open`
+2. Select "installTrigger" from the function dropdown
+3. Click the "Run" button (▶️)
+4. Grant necessary permissions when prompted
+5. Check the "Triggers" section in the left sidebar to confirm it was created
+
+**Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
 
 ## Multi-Account Setup (Advanced)
 
@@ -411,23 +396,6 @@ If you already have a working single-account setup:
 
 Your existing setup continues to work throughout the migration process.
 
-## Optional: Schedule Automatic Processing
-
-To have the script run automatically every hour, triggers must be installed manually due to permission limitations:
-
-### Trigger Installation Process
-1. Open the Apps Script editor: `npm run open` (single account) or `npm run open:personal` (multi-account)
-2. Select "installTrigger" from the function dropdown
-3. Click the "Run" button (▶️)
-4. Grant necessary permissions when prompted
-5. Check the "Triggers" section in the left sidebar to confirm it was created
-
-**Important**: The `deploy:[account]:all` commands attempt automated trigger installation but may fail on the `clasp run` portion due to permission restrictions. Manual installation is more reliable.
-
-**For multi-account setups**: Install triggers separately for each account by opening each account's Apps Script editor.
-
-**Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
-
 ## Understanding Your Results
 
 After running the script:
@@ -519,7 +487,7 @@ You can customize the web app behavior with these Script Properties:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `WEBAPP_ENABLED` | `true` | Enable/disable web app functionality |
-| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `25` | Maximum emails to process in web app per summary |
+| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process in web app per summary |
 
 **Settings Details**:
 - **`WEBAPP_ENABLED`**: Set to `false` to completely disable web app features while keeping automatic labeling active
