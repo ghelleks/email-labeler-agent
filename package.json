@@ -13,10 +13,16 @@
     "open:logs": "clasp open-logs",
     "version": "clasp version",
     "version:stable": "clasp version \"stable-$(date +%Y%m%d-%H%M%S)\"",
-    "deploy": "npm run version:stable && clasp deploy --description \"Production deployment $(date)\"",
-    "deploy:full": "npm run deploy && npm run trigger:install",
+    "deploy": "npm run push && npm run version:stable && clasp deploy --description \"Production deployment $(date)\"",
+    "deploy:triggers": "npm run deploy && npm run trigger:install && echo \"\\n✅ Email processing deployment complete!\\n\"",
+    "deploy:webapp": "npm run push && echo \"\\n🚀 Deploying web app...\\n\" && clasp deploy --description \"Web app deployment $(date)\" && echo \"\\n📱 Web app deployed successfully! Manual URL retrieval required.\\n\"",
+    "deploy:all": "echo \"\\n🚀 Deploying complete system...\\n\" && npm run push && npm run version:stable && clasp deploy --description \"Complete system deployment $(date)\" && npm run trigger:install && echo \"\\n✅ Complete system deployment finished! Both web app and email processing are active.\\n\"",
+    "webapp:url": "echo \"\\n📱 Getting web app URL...\\n\" && clasp run getWebAppUrl",
+    "webapp:open": "echo \"\\n🌐 Opening Apps Script project for manual web app URL retrieval...\\n\" && npm run open",
+    "webapp:deploy-and-open": "npm run deploy:webapp && npm run webapp:open",
     "trigger:install": "clasp run installTrigger",
-    "trigger:delete": "clasp run deleteExistingTriggers_"
+    "trigger:delete": "clasp run deleteExistingTriggers_",
+    "trigger:list": "echo \"\\n⏰ Listing installed triggers...\\n\" && clasp run 'ScriptApp.getProjectTriggers().forEach(t => console.log(\"Function: \" + t.getHandlerFunction() + \", Source: \" + t.getTriggerSource()))'"
   },
   "devDependencies": {}
 }

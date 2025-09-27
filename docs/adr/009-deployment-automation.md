@@ -39,14 +39,14 @@ We implemented an automated deployment workflow with integrated versioning and t
 **Automated Deployment Workflow:**
 - `version:stable`: Creates timestamped stable versions using current code state
 - `deploy`: Combines version creation with deployment and descriptive metadata
-- `deploy:full`: Complete workflow including trigger updates for production readiness
+- `deploy:all`: Complete workflow including trigger updates for production readiness
 
 **Integrated npm Scripts:**
 ```json
 {
   "version:stable": "clasp version \"stable-$(date +%Y%m%d-%H%M%S)\"",
   "deploy": "npm run version:stable && clasp deploy --description \"Production deployment $(date)\"",
-  "deploy:full": "npm run deploy && npm run trigger:install"
+  "deploy:all": "npm run deploy && npm run trigger:install"
 }
 ```
 
@@ -91,7 +91,7 @@ We implemented an automated deployment workflow with integrated versioning and t
 - **Traceability**: Timestamped versions provide clear deployment history
 - **Integration**: npm scripts work seamlessly with existing clasp workflow
 - **Documentation**: Clear deployment commands documented in package.json
-- **Efficiency**: Single command (`deploy:full`) handles complete deployment cycle
+- **Efficiency**: Single command (`deploy:all`) handles complete deployment cycle
 - **Reliability**: Systematic approach reduces risk of incomplete deployments
 
 ### Negative
@@ -116,12 +116,12 @@ npm run version:stable
 npm run deploy
 
 # Full deployment including trigger updates (for production)
-npm run deploy:full
+npm run deploy:all
 ```
 
 ### Version Management Strategy
 - Stable versions should be created for all production deployments
-- Development testing can use `clasp push` without versioning
+- Development testing can use `npm run push` without versioning
 - Periodic cleanup of old stable versions to manage project size
 - Document significant deployments with descriptive deployment messages
 
@@ -132,7 +132,7 @@ npm run deploy:full
 4. Verify system functionality after rollback
 
 ### Trigger Management Integration
-- `deploy:full` automatically updates triggers after deployment
+- `deploy:all` automatically updates triggers after deployment
 - Ensures triggers use the newly deployed version
 - Handles trigger deletion and recreation for clean state
 - Use `trigger:install` separately if triggers need updating without deployment

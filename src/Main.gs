@@ -48,3 +48,72 @@ function deleteExistingTriggers_() {
     .filter(t => t.getHandlerFunction() === 'run')
     .forEach(ScriptApp.deleteTrigger);
 }
+
+/**
+ * Get the web app URL for the current deployment
+ * This function can be called via clasp to get the web app URL after deployment
+ */
+function getWebAppUrl() {
+  try {
+    // Get the script ID
+    const scriptId = ScriptApp.getScriptId();
+
+    // Get project deployments to find the web app
+    const deployments = ScriptApp.getProjectDeployments();
+
+    // Find the latest web app deployment
+    let webAppDeployment = null;
+    for (const deployment of deployments) {
+      if (deployment.getDeploymentConfig().getWebApp()) {
+        webAppDeployment = deployment;
+        break; // Get the first (most recent) web app deployment
+      }
+    }
+
+    if (webAppDeployment) {
+      const deploymentId = webAppDeployment.getDeploymentId();
+      const webAppUrl = `https://script.google.com/macros/s/${deploymentId}/exec`;
+
+      console.log('='.repeat(60));
+      console.log('WEB APP DEPLOYMENT SUCCESSFUL');
+      console.log('='.repeat(60));
+      console.log(`📱 Web App URL: ${webAppUrl}`);
+      console.log('');
+      console.log('Next steps:');
+      console.log('1. Bookmark this URL for easy access');
+      console.log('2. Test the web app by visiting the URL');
+      console.log('3. Apply the "summarize" label to emails in Gmail');
+      console.log('4. Use the web app to generate summaries');
+      console.log('='.repeat(60));
+
+      return {
+        success: true,
+        url: webAppUrl,
+        deploymentId: deploymentId,
+        scriptId: scriptId
+      };
+    } else {
+      console.log('⚠️  No web app deployment found.');
+      console.log('');
+      console.log('To deploy the web app:');
+      console.log('1. Run: npm run open');
+      console.log('2. Click "Deploy" → "New deployment"');
+      console.log('3. Choose type: "Web app"');
+      console.log('4. Set "Execute as": "Me", "Access": "Only myself"');
+      console.log('5. Click "Deploy" and copy the URL');
+      console.log('6. Or run: npm run deploy:webapp');
+
+      return {
+        success: false,
+        error: 'No web app deployment found. Please deploy the web app first.',
+        scriptId: scriptId
+      };
+    }
+  } catch (error) {
+    console.log('Error getting web app URL: ' + error.toString());
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}

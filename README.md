@@ -13,6 +13,21 @@ This system automatically reads your incoming Gmail and sorts it into four actio
 
 **Example**: A meeting invitation gets labeled `reply_needed`, while a weekly newsletter gets labeled `review`.
 
+## Quick Start Summary
+
+**New to this?** Here's what you'll accomplish:
+
+✅ **Main Goal**: Set up automatic email labeling that runs in Google's cloud
+✅ **Time Required**: 5-10 minutes for basic setup
+✅ **Technical Level**: Beginner-friendly with step-by-step instructions
+✅ **What You'll Get**: Your Gmail automatically organized into 4 helpful categories
+
+**Optional Advanced Features** (you can add these later):
+- ⚪ **Automatic scheduling**: Run every hour without your computer
+- ⚪ **Web dashboard**: On-demand email summaries on your phone
+
+**Ready?** Follow the setup guide below. You can stop after the basic setup and add advanced features anytime.
+
 ## Prerequisites
 
 Before you start, make sure you have:
@@ -206,7 +221,7 @@ npm run trigger:delete
 
 **Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
 
-**Pro tip**: Use `npm run deploy:full` when making major updates—it automatically reinstalls triggers to ensure they use your latest deployment.
+**Pro tip**: Use `npm run deploy:all` when making major updates—it automatically reinstalls triggers to ensure they use your latest deployment.
 
 ## Understanding Your Results
 
@@ -219,7 +234,115 @@ After running the script:
 
 Each email gets exactly one label to keep things simple and clear.
 
-## Customization (Advanced)
+## 🎉 Congratulations!
+
+You now have automated email labeling set up! Your Gmail will automatically organize new emails into helpful categories. You can stop here and enjoy your automated email management, or continue below for optional advanced features.
+
+## Advanced Features (Optional)
+
+### Automatic Scheduling
+
+To have the script run automatically every hour:
+
+1. In the Apps Script editor, select "installTrigger" from the function dropdown
+2. Click the "Run" button (▶️)
+3. Check the "Triggers" section in the left sidebar to confirm it was created
+
+**Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
+
+### Interactive Web App Dashboard
+
+In addition to automatic email labeling, this system includes an **Interactive Web App Dashboard** for on-demand email summarization and archiving. This mobile-optimized interface allows you to:
+
+- Get AI-powered summaries of emails labeled with `summarize`
+- Archive processed emails with one tap
+- View email count status and links to source emails
+- Access from any device through a simple web interface
+
+#### Web App Features
+
+- **Works on phones and computers**: Touch-optimized interface for any device
+- **AI Summarization**: Get short summaries of long emails in newspaper style
+- **Email Count Accuracy**: Know exactly what will be archived before you confirm
+- **Source Email Links**: Direct links back to your Gmail threads
+- **Web Link Extraction**: Automatically finds and displays URLs from emails
+- **Dark Mode Support**: Automatically adapts to your device preferences
+
+#### Web App Setup
+
+**⚠️ Note**: This is an advanced feature. Complete the basic setup above first.
+
+For detailed web app setup instructions, see [docs/webapp-setup.md](docs/webapp-setup.md).
+
+**Quick Setup (Automated)**:
+```bash
+npm run deploy:webapp
+```
+
+This command will:
+1. Upload your latest code to Apps Script
+2. Create a new web app deployment
+3. **Automatically display your web app URL** for bookmarking
+
+**Manual Setup Alternative**:
+1. In the Apps Script editor, click "Deploy" → "New deployment"
+2. Choose type: "Web app", Execute as: "Me", Access: "Only myself"
+3. Click "Deploy" and copy the web app URL
+4. Bookmark the URL for easy access
+
+**Getting Your Web App URL Anytime**:
+```bash
+npm run webapp:url
+```
+
+This command shows your current web app URL and setup instructions.
+
+#### How to Use the Web App
+
+1. **Label emails for summarization**: Apply the `summarize` label to emails in Gmail
+2. **Open the web dashboard**: Visit your web app URL
+3. **Get Summary**: Tap "Get Summary" to process all emails with the `summarize` label
+4. **Review the summary**: Read the AI-generated consolidated summary with source links
+5. **Archive emails**: Tap "Archive X Emails" to remove labels and archive the processed emails
+
+**Pro Tip**: The web app is perfect for processing newsletters, long email threads, or multiple related emails at once.
+
+#### Web App Configuration
+
+You can customize the web app behavior with these Script Properties:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `WEBAPP_ENABLED` | `true` | Enable/disable web app functionality |
+| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `25` | Maximum emails to process in web app per summary |
+
+**Settings Details**:
+- **`WEBAPP_ENABLED`**: Set to `false` to completely disable web app features while keeping automatic labeling active
+- **`WEBAPP_MAX_EMAILS_PER_SUMMARY`**: Controls performance and readability by limiting emails per summary. Larger numbers may cause timeouts or very long summaries
+
+#### Web App Troubleshooting
+
+**🔍 Problem**: Web app shows "Web app functionality is disabled"
+- **Solution**: Set `WEBAPP_ENABLED=true` in Script Properties
+- **Solution**: Redeploy the web app if the setting was changed after deployment
+
+**🔍 Problem**: "No emails found with 'summarize' label"
+- **Solution**: Apply the `summarize` label to some emails in Gmail first
+- **Solution**: Verify the label exists and is spelled correctly (all lowercase)
+
+**🔍 Problem**: Web app times out during summarization
+- **Solution**: Reduce `WEBAPP_MAX_EMAILS_PER_SUMMARY` to a smaller number (try `10`)
+- **Solution**: Check that `DAILY_GEMINI_BUDGET` hasn't been exceeded
+
+**🔍 Problem**: Archive button doesn't work
+- **Solution**: Ensure you've generated a summary first before trying to archive
+- **Solution**: Check that emails still have the `summarize` label applied
+
+**🔍 Problem**: Web app URL not working
+- **Solution**: Redeploy the web app and get a new URL
+- **Solution**: Check that deployment type is set to "Web app" not "API executable"
+
+### Customization (Advanced)
 
 You can customize how emails are categorized by creating a rules document:
 
@@ -245,15 +368,18 @@ npm run status        # Check sync status between local and remote
 
 ### Deployment Commands
 ```bash
-npm run deploy        # Create stable version and deploy
-npm run deploy:full   # Deploy and reinstall triggers (recommended for major updates)
-npm run version:stable # Create timestamped stable version
+npm run deploy            # Basic versioned deployment
+npm run deploy:triggers   # Deploy with email processing triggers
+npm run deploy:webapp     # Deploy web app only
+npm run deploy:all        # Deploy everything (webapp + triggers) - RECOMMENDED
+npm run version:stable    # Create timestamped stable version
 ```
 
 ### Trigger Management
 ```bash
 npm run trigger:install  # Install hourly processing trigger
 npm run trigger:delete   # Remove all existing triggers
+npm run trigger:list     # List currently installed triggers
 ```
 
 ## Troubleshooting
@@ -294,9 +420,12 @@ npm run trigger:delete   # Remove all existing triggers
 - **Data**: Email content is sent to Google's Gemini AI for analysis but isn't stored permanently
 - **Revoke access**: You can remove permissions anytime in your [Google Account settings](https://myaccount.google.com/permissions)
 
+
 ## Configuration Reference
 
 All settings are optional and have sensible defaults:
+
+### Core Email Processing
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -310,6 +439,13 @@ All settings are optional and have sensible defaults:
 
 ## Updating and Deploying the Script
 
+### Understanding Deployment Types
+
+There are two types of deployments in this system:
+
+1. **Code Deployment**: Uploads your code to Apps Script (for automatic email labeling)
+2. **Web App Deployment**: Makes the web dashboard accessible via URL
+
 ### Development Updates
 
 For simple code changes during development:
@@ -318,13 +454,13 @@ For simple code changes during development:
 npm run push
 ```
 
-This uploads any code changes to your Apps Script project.
+This uploads any code changes to your Apps Script project but doesn't create deployments.
 
 ### Production Deployments
 
 For significant updates (like model changes or new features), use the proper deployment workflow:
 
-#### Quick Deployment
+#### Basic Deployment
 ```bash
 npm run deploy
 ```
@@ -334,15 +470,27 @@ This command:
 2. Deploys that version as a new deployment
 3. Provides a stable rollback point if needed
 
-#### Full Deployment with Trigger Reset
+#### Complete System Deployment
 ```bash
-npm run deploy:full
+npm run deploy:all
 ```
 
 This command:
 1. Runs the complete deployment process
-2. Reinstalls the hourly trigger to ensure it uses the new deployment
-3. **Use this when**: Updating AI models, changing trigger behavior, or major functionality changes
+2. Automatically installs the hourly trigger to ensure it uses the new deployment
+3. **Use this when**: First-time setup, updating AI models, changing trigger behavior, or major functionality changes
+4. **Recommended for most production updates**
+
+#### Web App Only Deployment
+```bash
+npm run deploy:webapp
+```
+
+This command:
+1. Uploads current code
+2. Creates a web app deployment
+3. **Shows your web app URL immediately**
+4. Perfect for initial web app setup or web app updates
 
 **Why use deployment commands?** They create stable versions with timestamps, making it easy to track changes and rollback if something goes wrong. This is especially important when updating AI models or core functionality.
 
@@ -361,7 +509,7 @@ npm run version          # Creates a version with custom description
 - **Deployments**: Published versions that can be shared or accessed via URL
 - **Development**: Your working code that runs when you click "Run" in the editor
 
-**Best Practice**: Use `npm run deploy:full` when updating your AI model or making significant changes to ensure everything works correctly together.
+**Best Practice**: Use `npm run deploy:all` when updating your AI model or making significant changes to ensure everything works correctly together.
 
 ### When to Use Each Command
 
@@ -369,7 +517,10 @@ npm run version          # Creates a version with custom description
 |----------|---------|-----|
 | Quick bug fix or minor tweak | `npm run push` | Fast, works for development |
 | New feature or configuration change | `npm run deploy` | Creates stable version for rollback |
-| AI model update or trigger changes | `npm run deploy:full` | Ensures triggers use new deployment |
+| Complete system setup or major updates | `npm run deploy:all` | Ensures triggers use new deployment + full system setup |
+| Email processing setup only | `npm run deploy:triggers` | Backend deployment with trigger installation |
+| Setting up web app for first time | `npm run deploy:webapp` | Quick web app deployment with immediate URL |
+| Getting web app URL after setup | `npm run webapp:url` | Shows current web app URL and instructions |
 | Testing new changes | `npm run push` + manual testing | Safe development workflow |
 
 ### Example: Updating AI Model
@@ -378,7 +529,7 @@ When you update your AI model (like switching to a newer Gemini version):
 
 1. Make your code changes locally
 2. Test with `npm run push` and manual execution
-3. Once satisfied, deploy with `npm run deploy:full`
+3. Once satisfied, deploy with `npm run deploy:all`
 4. Verify the trigger is working with the new model
 
 This ensures your scheduled runs use the updated model and any trigger-related changes take effect.
