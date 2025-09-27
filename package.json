@@ -11,13 +11,12 @@
     "switch:create-project-files": "node scripts/switch-account.js create-project-files",
     "auth:help": "echo '\n🔐 Authentication Help:\n   clasp --user personal login    - Log into personal account\n   clasp --user work login        - Log into Work account\n   npm run switch:status          - Check all authentication status\n'",
 
-    "_comment_account_operations": "Account-Specific Operations using native clasp --user flags",
-    "push:personal": "clasp --user personal --project .clasp.json.personal push",
-    "push:work": "clasp --user work --project .clasp.json.work push",
-    "deploy:personal": "clasp --user personal --project .clasp.json.personal push && clasp --user personal --project .clasp.json.personal deploy --description \"Production deployment $(date)\"",
-    "deploy:work": "clasp --user work --project .clasp.json.work push && clasp --user work --project .clasp.json.work deploy --description \"Production deployment $(date)\"",
-    "deploy:personal:all": "clasp --user personal --project .clasp.json.personal push && clasp --user personal --project .clasp.json.personal deploy --description \"Complete deployment $(date)\" && clasp --user personal --project .clasp.json.personal run installTrigger",
-    "deploy:work:all": "clasp --user work --project .clasp.json.work push && clasp --user work --project .clasp.json.work deploy --description \"Complete deployment $(date)\" && clasp --user work --project .clasp.json.work run installTrigger",
+    "_comment_deployment": "Deployment Operations (push + web app update + triggers)",
+    "deploy:personal": "node scripts/deploy-webapp.js personal",
+    "deploy:work": "node scripts/deploy-webapp.js work",
+    "deploy:all": "node scripts/deploy-webapp.js all",
+
+    "_comment_utilities": "Utility Commands",
     "logs:personal": "clasp --user personal --project .clasp.json.personal logs",
     "logs:work": "clasp --user work --project .clasp.json.work logs",
     "status:personal": "clasp --user personal --project .clasp.json.personal status",
@@ -28,10 +27,8 @@
     "url:work": "clasp --user work --project .clasp.json.work run getWebAppUrl",
     "url:all": "echo '\n📱 Getting Web App URLs for all accounts...\n' && npm run url:personal && npm run url:work",
 
-    "_comment_multi_account_operations": "Multi-Account Operations (all accounts at once)",
+    "_comment_multi_account_operations": "Multi-Account Operations",
     "status:all": "node scripts/multi-account.js status-all",
-    "deploy:all-accounts": "node scripts/multi-account.js deploy-all",
-    "push:all-accounts": "node scripts/multi-account.js push-all",
 
     "_comment_validation": "Configuration Validation",
     "validate:accounts": "node scripts/validate-accounts.js",
