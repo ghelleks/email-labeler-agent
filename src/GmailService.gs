@@ -29,7 +29,7 @@ function minimalize_(threads, bodyChars) {
  */
 
 /**
- * Find emails with 'summarize' label and return data for processing
+ * Find emails with 'summarize' label in inbox only and return data for processing
  * Returns: { success: boolean, emails: array, count: number, error?: string }
  */
 function findEmailsWithSummarizeLabel_() {
@@ -42,7 +42,9 @@ function findEmailsWithSummarizeLabel_() {
       };
     }
 
-    const threads = label.getThreads();
+    // Use Gmail search to find emails with summarize label that are in inbox only
+    const query = 'in:inbox label:summarize';
+    const threads = GmailApp.search(query);
     const emails = [];
 
     for (let i = 0; i < threads.length; i++) {
