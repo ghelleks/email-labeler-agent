@@ -34,8 +34,10 @@ npm run trigger:delete    # Remove all existing triggers
 
 ### Deployment
 ```bash
-npm run version           # Create a new stable version
-npm run deploy            # Deploy a new version for sharing
+npm run version           # Create a new version (manual)
+npm run version:stable    # Create timestamped stable version
+npm run deploy            # Create version + deploy with description
+npm run deploy:full       # Complete workflow: version + deploy + update triggers
 ```
 
 ## Architecture Overview

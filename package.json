@@ -11,8 +11,10 @@
     "status": "clasp status",
     "logs": "clasp logs --watch",
     "open:logs": "clasp open-logs",
-    "version": "clasp version \"stable\"",
-    "deploy": "clasp deploy --description \"v1\"",
+    "version": "clasp version",
+    "version:stable": "clasp version \"stable-$(date +%Y%m%d-%H%M%S)\"",
+    "deploy": "npm run version:stable && clasp deploy --description \"Production deployment $(date)\"",
+    "deploy:full": "npm run deploy && npm run trigger:install",
     "run": "clasp run run",
     "trigger:install": "clasp run installTrigger",
     "trigger:delete": "clasp run deleteExistingTriggers_"
