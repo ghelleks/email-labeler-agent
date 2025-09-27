@@ -46,16 +46,50 @@ Prereqs: Node 18+, `@google/clasp` installed and logged in.
 
 ```bash
 npm install -g @google/clasp
+```
+
+### Multi-Account Setup (Recommended)
+
+#### Initial Setup
+```bash
+# Configure accounts
+npm run setup:account
+
+# Authenticate each account
+clasp --user personal login
+clasp --user work login
+
+# Create project files
+npm run switch:create-project-files
+
+# Validate setup
+npm run validate:accounts
+```
+
+#### Daily Development Workflow
+```bash
+# Push to specific account
+npm run push:personal
+npm run push:work
+
+# Open specific account editor
+npm run open:personal
+npm run open:work
+
+# Deploy with triggers
+npm run deploy:personal:all
+npm run deploy:work:all
+
+# Check account status
+npm run switch:status
+npm run status:all
+```
+
+### Legacy Single Account Workflow
+For existing single-account setups or simple deployments:
+```bash
 clasp login --no-localhost
-```
-
-Project setup (first time):
-```bash
-npm run create
-```
-
-Daily workflow:
-```bash
+npm run create  # First time only
 npm run push
 npm run open
 ```
@@ -99,14 +133,26 @@ npm run open
 - Only allowed labels are accepted; others are treated as invalid and skipped.
 
 ## Scheduling
-Install an hourly trigger:
+
+### Trigger Installation
+**Important**: Automated trigger installation via `clasp run` is unreliable due to permission issues. Manual installation is recommended:
+
+1. Open Apps Script editor: `npm run open:personal` or `npm run open:work`
+2. Select `installTrigger` from function dropdown
+3. Click Run button and grant permissions
+4. Verify in Triggers section
+
+### Programmatic Trigger Management
+For manual execution in Apps Script editor:
 ```javascript
-installTrigger();
+installTrigger();           // Install hourly trigger
+deleteExistingTriggers_();  // Remove all triggers
 ```
-Remove triggers:
-```javascript
-deleteExistingTriggers_();
-```
+
+### Multi-Account Trigger Management
+Install triggers separately for each account:
+- Personal: `npm run open:personal` → run `installTrigger`
+- Work: `npm run open:work` → run `installTrigger`
 
 ## Troubleshooting
 - Nothing happens: check that `run()` was authorized (run once in editor).
@@ -213,17 +259,35 @@ The handler receives an `AgentContext` and returns an `AgentResult`.
 - The script stores daily budget counters and flags in Script Properties.
 
 ## Versioning & Releases
-- Create a version:
+
+### Multi-Account Deployment
 ```bash
-npm run version:stable
+# Deploy to specific account
+npm run deploy:personal:all    # Complete deployment (code + triggers)
+npm run deploy:work:all        # Complete deployment (code + triggers)
+
+# Deploy to all accounts
+npm run deploy:all-accounts     # Batch deployment with confirmation
+
+# Account-specific operations
+npm run push:personal           # Push code only
+npm run deploy:personal         # Deploy code only
+npm run logs:personal           # View execution logs
+npm run status:personal         # Check account status
 ```
-- Deploy complete system:
+
+### Validation and Troubleshooting
 ```bash
-npm run deploy:all
+npm run validate:accounts       # Validate multi-account configuration
+npm run switch:status          # Show all account statuses
+npm run auth:help              # Authentication guidance
 ```
-- Deploy web app only:
+
+### Legacy Single Account Commands
 ```bash
-npm run deploy:webapp
+npm run version:stable         # Create timestamped version
+npm run deploy:all             # Deploy complete system (if using legacy setup)
+npm run deploy:webapp          # Deploy web app only (if using legacy setup)
 ```
 
 ## Notes

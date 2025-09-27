@@ -31,12 +31,12 @@ function getRuleText_(docIdOrUrl) {
   }
 
   try {
-    // Use Google Docs export URL to get markdown format
-    const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=md`;
+    // Use original working Google Docs feeds API URL format
+    const exportUrl = 'https://docs.google.com/feeds/download/documents/export/Export?exportFormat=markdown&id=' + encodeURIComponent(docId);
 
     if (debug) {
       console.log(JSON.stringify({
-        ruleDocSource: 'docs-export-url',
+        ruleDocSource: 'docs-feeds-api',
         docId: docId,
         exportUrl: exportUrl
       }, null, 2));
@@ -46,6 +46,7 @@ function getRuleText_(docIdOrUrl) {
       headers: {
         'Authorization': 'Bearer ' + ScriptApp.getOAuthToken()
       },
+      followRedirects: true,
       muteHttpExceptions: true
     });
 

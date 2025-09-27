@@ -200,28 +200,201 @@ If you set `DRY_RUN=true`, the script will analyze emails but won't apply labels
 
 ## Optional: Schedule Automatic Processing
 
-To have the script run automatically every hour, you can install a trigger using either method:
+To have the script run automatically every hour, triggers must be installed manually due to permission limitations:
 
-### Method 1: Command Line (Recommended)
-```bash
-npm run trigger:install
-```
-
-### Method 2: Apps Script Editor
-1. In the Apps Script editor, select "installTrigger" from the function dropdown
-2. Click the "Run" button (▶️)
-3. Check the "Triggers" section in the left sidebar to confirm it was created
-
-### Managing Triggers
-
-To remove all triggers (useful when updating):
-```bash
-npm run trigger:delete
-```
+### Trigger Installation Process
+1. Open the Apps Script editor: `npm run open`
+2. Select "installTrigger" from the function dropdown
+3. Click the "Run" button (▶️)
+4. Grant necessary permissions when prompted
+5. Check the "Triggers" section in the left sidebar to confirm it was created
 
 **Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
 
-**Pro tip**: Use `npm run deploy:all` when making major updates—it automatically reinstalls triggers to ensure they use your latest deployment.
+## Multi-Account Setup (Advanced)
+
+This section is for users who want to manage multiple Gmail accounts (personal, work, etc.) from one codebase. If you completed the single account setup above, you can migrate to multi-account at any time.
+
+### Prerequisites for Multi-Account
+
+Beyond the basic prerequisites, you'll need:
+- **Multiple Google accounts** with Gmail access
+- **Apps Script projects** for each account (we'll help you create these)
+- **Basic understanding** of Google Apps Script project IDs
+
+### Step 1: Initial Multi-Account Configuration
+
+#### 1a. Run the Account Setup Wizard
+
+```bash
+npm run setup:account
+```
+
+This interactive wizard will:
+- Detect and offer to import your existing single-account setup
+- Guide you through adding multiple accounts
+- Create the `accounts.json` configuration file
+- Set up account switching capabilities
+
+#### 1b. Add Your Accounts
+
+For each Gmail account you want to manage:
+
+1. **Log into the Google account** in your browser
+2. **Create a new Apps Script project** for that account:
+   ```bash
+   clasp login  # Login to the specific Google account
+   clasp create --type standalone --title "Email Agent - [Account Name]" --rootDir ./src
+   ```
+3. **Note the Script ID** from the output (looks like: `1BxKMGtEE123abc456def789...`)
+4. **Add to configuration** using the setup wizard
+
+**Example Multi-Account Configuration:**
+```json
+{
+  "defaultAccount": "personal",
+  "accounts": {
+    "personal": {
+      "scriptId": "1BxKMGtEE123abc456def789...",
+      "description": "Personal Gmail account"
+    },
+    "work": {
+      "scriptId": "1CyLNHuFF456ghi789jkl012...",
+      "description": "Work Gmail account"
+    }
+  }
+}
+```
+
+### Step 2: Configure Each Account
+
+For each account in your configuration:
+
+#### 2a. Authenticate and Create Project Files
+```bash
+# Authenticate each account
+clasp --user personal login
+clasp --user work login
+
+# Create project files for all accounts
+npm run switch:create-project-files
+
+# Upload code to specific account
+npm run push:personal
+npm run push:work
+
+# Open Apps Script editor for configuration
+npm run open:personal  # Opens personal account
+npm run open:work      # Opens work account
+```
+
+#### 2b. Configure Script Properties
+
+In each account's Apps Script editor, add the same Script Properties as the single account setup:
+- `GEMINI_API_KEY`: Your API key for this account
+- `DRY_RUN`: `true` (recommended for initial testing)
+- `DEBUG`: `true` (helpful for troubleshooting)
+
+**Important**: Each Google account can use the same Gemini API key, OR you can create separate API keys for better quota isolation.
+
+### Step 3: Test Multi-Account Setup
+
+#### 3a. Validate Configuration
+```bash
+npm run validate:accounts
+```
+
+This checks that all accounts are properly configured and accessible.
+
+#### 3b. Test Each Account
+```bash
+# Test personal account
+npm run push:personal
+npm run open:personal  # Test manually in Apps Script editor
+
+# Test work account
+npm run push:work
+npm run open:work      # Test manually in Apps Script editor
+```
+
+#### 3c. Check Account Status
+```bash
+npm run switch:status  # Shows all account statuses
+npm run status:all     # Shows status for all configured accounts
+```
+
+### Step 4: Deploy to All Accounts
+
+#### 4a. Deploy to Specific Account
+```bash
+npm run deploy:personal:all   # Full deployment (code + triggers + webapp)
+npm run deploy:work:all       # Full deployment (code + triggers + webapp)
+```
+
+#### 4b. Deploy to All Accounts at Once
+```bash
+npm run deploy:all-accounts   # Deploys to ALL configured accounts with confirmation
+```
+
+### Multi-Account Daily Workflow
+
+#### Account Status and Information
+```bash
+npm run switch:status      # Check all account statuses
+npm run status:personal    # Check personal account status
+npm run status:work        # Check work account status
+```
+
+#### Account-Specific Operations
+```bash
+# Push code changes to specific account
+npm run push:personal
+npm run push:work
+
+# View logs from specific account
+npm run logs:personal
+npm run logs:work
+
+# Deploy to specific account
+npm run deploy:personal:all
+npm run deploy:work:all
+```
+
+#### Bulk Operations
+```bash
+npm run push:all-accounts     # Push to ALL accounts
+npm run status:all           # Check status of ALL accounts
+npm run deploy:all-accounts  # Deploy to ALL accounts (with confirmation)
+```
+
+### Multi-Account Tips and Best Practices
+
+#### 🔒 Security Considerations
+- **API Keys**: Each account can use the same API key OR separate keys for quota isolation
+- **Permissions**: Each Apps Script project has independent permissions
+- **Access Control**: Use work Google accounts for work email, personal for personal
+
+#### 🚀 Deployment Strategy
+- **Development**: Use `npm run push:[account]` for quick testing
+- **Production**: Use `npm run deploy:[account]:all` for stable releases
+- **Bulk Updates**: Use `npm run deploy:all-accounts` when updating core functionality
+
+#### 🔧 Troubleshooting Multi-Account
+- **Wrong Account Active**: Check with `npm run switch:status`
+- **Login Issues**: Each account needs separate `clasp login` authorization
+- **Configuration Errors**: Run `npm run validate:accounts` to check setup
+
+### Migrating from Single Account
+
+If you already have a working single-account setup:
+
+1. **Backup**: Your existing `.clasp.json` will be preserved
+2. **Run Setup**: `npm run setup:account` will offer to import your current setup
+3. **Add More Accounts**: Use the wizard to add additional accounts
+4. **Gradual Migration**: You can use both old commands (`npm run deploy`) and new commands (`npm run deploy:personal`) simultaneously
+5. **Switch When Ready**: Once comfortable, use multi-account commands exclusively
+
+Your existing setup continues to work throughout the migration process.
 
 ## Understanding Your Results
 
@@ -314,7 +487,7 @@ You can customize the web app behavior with these Script Properties:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `WEBAPP_ENABLED` | `true` | Enable/disable web app functionality |
-| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `25` | Maximum emails to process in web app per summary |
+| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process in web app per summary |
 
 **Settings Details**:
 - **`WEBAPP_ENABLED`**: Set to `false` to completely disable web app features while keeping automatic labeling active
@@ -358,28 +531,53 @@ The system includes sensible defaults, so this is completely optional.
 
 Once set up, these commands help you manage your project:
 
-### Development Commands
+### Available Commands
+
+**Note**: This project uses a multi-account system. The commands below reflect the current npm script structure.
+
+#### Account Setup and Management
 ```bash
-npm run push          # Upload code changes to Apps Script
-npm run open          # Open Apps Script editor in browser
-npm run logs          # Watch live execution logs
-npm run status        # Check sync status between local and remote
+# Initial Setup
+npm run setup:account               # Interactive account configuration wizard
+npm run switch:create-project-files  # Create project files for all accounts
+npm run validate:accounts           # Validate account configuration
+npm run auth:help                   # Show authentication guidance
+
+# Status and Information
+npm run switch:status               # Show all account statuses
 ```
 
-### Deployment Commands
+#### Account-Specific Operations
 ```bash
-npm run deploy            # Basic versioned deployment
-npm run deploy:triggers   # Deploy with email processing triggers
-npm run deploy:webapp     # Deploy web app only
-npm run deploy:all        # Deploy everything (webapp + triggers) - RECOMMENDED
-npm run version:stable    # Create timestamped stable version
+# Push Code
+npm run push:personal               # Push code to personal account
+npm run push:work                   # Push code to work account
+
+# Deploy (Push + Deploy)
+npm run deploy:personal             # Push + deploy to personal account
+npm run deploy:work                 # Push + deploy to work account
+
+# Complete Deployment (Push + Deploy + Trigger Setup)
+npm run deploy:personal:all         # Complete deployment to personal account
+npm run deploy:work:all             # Complete deployment to work account
+
+# Monitoring and Logs
+npm run logs:personal               # View execution logs from personal account
+npm run logs:work                   # View execution logs from work account
+npm run status:personal             # Check status of personal account
+npm run status:work                 # Check status of work account
+
+# Apps Script Editor Access
+npm run open:personal               # Open Apps Script editor for personal account
+npm run open:work                   # Open Apps Script editor for work account
 ```
 
-### Trigger Management
+#### Multi-Account Operations
 ```bash
-npm run trigger:install  # Install hourly processing trigger
-npm run trigger:delete   # Remove all existing triggers
-npm run trigger:list     # List currently installed triggers
+# Batch Operations (All Accounts)
+npm run status:all                  # Show status for all configured accounts
+npm run deploy:all-accounts         # Deploy to all configured accounts
+npm run push:all-accounts           # Push to all configured accounts
 ```
 
 ## Troubleshooting
@@ -407,11 +605,40 @@ npm run trigger:list     # List currently installed triggers
 - **Solution**: Check that you have recent emails without existing labels
 - **Solution**: Set `DEBUG=true` and check the execution logs
 
+### Multi-Account Troubleshooting
+
+**🔍 Problem**: Multi-account commands not working
+- **Solution**: Run `npm run setup:account` to create initial configuration
+- **Solution**: Ensure you have the latest project version with multi-account support
+
+**🔍 Problem**: `accounts.json not found` error
+- **Solution**: Run `npm run setup:account` to create the configuration file
+- **Solution**: Check that you're running commands from the project root directory
+
+**🔍 Problem**: Wrong account project file is being used
+- **Solution**: Check account statuses with `npm run switch:status`
+- **Solution**: Ensure you're using account-specific commands: `npm run [command]:[account]`
+- **Solution**: Verify `.clasp.json.[account]` files exist with correct Script IDs
+
+**🔍 Problem**: Script ID errors in multi-account setup
+- **Solution**: Verify Script IDs in `accounts.json` are correct (57+ characters)
+- **Solution**: Get Script ID from Apps Script URL: `script.google.com/.../SCRIPT_ID/edit`
+
+**🔍 Problem**: `clasp login` required for each account
+- **Solution**: This is normal - each Google account needs separate authorization
+- **Solution**: Run `clasp --user [account] login` and authorize each account you want to use
+
+**🔍 Problem**: Account-specific commands fail
+- **Solution**: Run `npm run validate:accounts` to check configuration
+- **Solution**: Ensure all Script IDs in `accounts.json` are valid
+- **Solution**: Run `npm run switch:create-project-files` to recreate project files
+
 ### Getting Help
 
 1. **Check the execution logs**: In Apps Script editor, look at the bottom panel after running
 2. **Enable debug mode**: Set `DEBUG=true` in Script Properties for detailed logging
 3. **Try dry run mode**: Set `DRY_RUN=true` to test without making changes
+4. **For multi-account issues**: Run `npm run validate:accounts` to diagnose configuration problems
 
 ## Security Notes
 
@@ -419,6 +646,12 @@ npm run trigger:list     # List currently installed triggers
 - **Permissions**: The script only accesses your Gmail to read emails and manage labels
 - **Data**: Email content is sent to Google's Gemini AI for analysis but isn't stored permanently
 - **Revoke access**: You can remove permissions anytime in your [Google Account settings](https://myaccount.google.com/permissions)
+
+### Multi-Account Security
+- **accounts.json**: Contains only Script IDs, not API keys or sensitive data
+- **Separate permissions**: Each Apps Script project has independent access to its respective Gmail account
+- **API key isolation**: Use separate API keys per account for quota isolation, or share one key across accounts
+- **Account separation**: Work and personal email processing remain completely separate
 
 
 ## Configuration Reference

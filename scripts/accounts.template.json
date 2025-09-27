@@ -1,0 +1,14 @@
+{
+  "$schema": "./accounts.schema.json",
+  "defaultAccount": "personal",
+  "accounts": {
+    "personal": {
+      "scriptId": "YOUR_PERSONAL_SCRIPT_ID_HERE",
+      "description": "Personal Gmail account"
+    },
+    "work": {
+      "scriptId": "YOUR_WORK_SCRIPT_ID_HERE",
+      "description": "Work Gmail account"
+    }
+  }
+}
