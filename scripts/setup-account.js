@@ -11,7 +11,7 @@ const path = require('path');
 const readline = require('readline');
 
 const ACCOUNTS_FILE = path.join(__dirname, '..', 'accounts.json');
-const ACCOUNTS_TEMPLATE_FILE = path.join(__dirname, '..', 'accounts.template.json');
+const ACCOUNTS_TEMPLATE_FILE = path.join(__dirname, 'accounts.template.json');
 
 /**
  * Create readline interface for user input

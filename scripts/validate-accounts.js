@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ACCOUNTS_FILE = path.join(__dirname, '..', 'accounts.json');
-const ACCOUNTS_SCHEMA_FILE = path.join(__dirname, '..', 'accounts.schema.json');
+const ACCOUNTS_SCHEMA_FILE = path.join(__dirname, 'accounts.schema.json');
 
 /**
  * Load and parse JSON file safely
@@ -241,7 +241,7 @@ function initializeConfiguration() {
     return false;
   }
 
-  const templateFile = path.join(__dirname, '..', 'accounts.template.json');
+  const templateFile = path.join(__dirname, 'accounts.template.json');
   if (!fs.existsSync(templateFile)) {
     console.log('❌ accounts.template.json not found. Cannot initialize configuration.');
     return false;
