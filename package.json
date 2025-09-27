@@ -1,10 +1,10 @@
 {
-  "name": "email-labeler-agent",
+  "name": "email-agent",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
   "scripts": {
-    "create": "clasp create --type standalone --title \"Gmail Labeler (Mail Screener)\" --rootDir ./src",
+    "create": "clasp create --type standalone --title \"Email Agent\" --rootDir ./src",
     "push": "clasp push",
     "pull": "clasp pull",
     "open": "clasp open-script",
