@@ -17,7 +17,7 @@ function doGet(e) {
 
 /**
  * Main orchestration function called from frontend
- * Phase 1: Basic functionality placeholder - will be implemented in Phase 2
+ * Phase 2: Gmail Integration - discovers emails and prepares data for summarization
  */
 function summarizeEmails() {
   try {
@@ -30,16 +30,76 @@ function summarizeEmails() {
       };
     }
 
-    // Phase 1: Return placeholder response for testing
+    // Step 1: Find emails with summarize label using GmailService
+    const emailDiscovery = findEmailsWithSummarizeLabel_();
+    if (!emailDiscovery.success) {
+      return emailDiscovery;
+    }
+
+    const { emails, count } = emailDiscovery;
+
+    if (count === 0) {
+      return {
+        success: true,
+        summary: '**No emails found** with "summarize" label. To test the web app:\n\n1. Apply the **summarize** label to some emails in Gmail\n2. Return here and click "Get Summary" again',
+        emailCount: 0,
+        emailLinks: [],
+        webLinks: [],
+        totalFound: 0,
+        processedCount: 0,
+        message: 'No emails found with "summarize" label'
+      };
+    }
+
+    // Respect max email limit from configuration
+    const maxEmails = cfg.WEBAPP_MAX_EMAILS_PER_SUMMARY;
+    const emailsToProcess = emails.slice(0, maxEmails);
+
+    if (emails.length > maxEmails) {
+      Logger.log(`WebApp: Processing ${maxEmails} of ${emails.length} emails due to WEBAPP_MAX_EMAILS_PER_SUMMARY limit`);
+    }
+
+    // Step 2: Generate permalinks for email references
+    const emailLinks = generateEmailPermalinks_(emailsToProcess);
+
+    // Step 3: Extract web links from email content
+    const webLinks = extractWebLinksFromEmails_(emailsToProcess);
+
+    // Step 4: Store email IDs for archiving (to ensure count consistency)
+    const emailIds = emailsToProcess.map(email => email.id);
+    PropertiesService.getScriptProperties().setProperty('WEBAPP_PENDING_ARCHIVE_IDS', JSON.stringify(emailIds));
+
+    // Phase 2: Return Gmail data with placeholder summary (AI integration comes in Phase 3)
+    let summaryText = `**Phase 2 Complete**: Found **${emailsToProcess.length} emails** with "summarize" label.\n\n`;
+
+    // Show email previews
+    summaryText += '**Email Previews:**\n';
+    emailsToProcess.forEach(function(email, index) {
+      summaryText += `\n**${index + 1}. ${email.subject}**\n`;
+      summaryText += `From: ${email.from}\n`;
+      summaryText += `Preview: ${email.body.substring(0, 100)}...\n`;
+    });
+
+    if (webLinks.length > 0) {
+      summaryText += `\n**Web Links Found:** ${webLinks.length}\n`;
+      webLinks.slice(0, 3).forEach(function(link) {
+        summaryText += `• ${link}\n`;
+      });
+      if (webLinks.length > 3) {
+        summaryText += `• ... and ${webLinks.length - 3} more\n`;
+      }
+    }
+
+    summaryText += '\n**Next Phase:** AI summarization will replace this preview with a consolidated summary.';
+
     return {
       success: true,
-      summary: '**Phase 1 Placeholder**: This is a test summary to verify the web app interface is working. The actual email processing will be implemented in **Phase 2** when Gmail and LLM service extensions are added.',
-      emailCount: 0,
-      emailLinks: [],
-      webLinks: [],
-      totalFound: 0,
-      processedCount: 0,
-      message: 'Phase 1: Web app foundation ready. Email processing coming in Phase 2.'
+      summary: summaryText,
+      emailCount: emailsToProcess.length,
+      emailLinks: emailLinks,
+      webLinks: webLinks,
+      totalFound: emails.length,
+      processedCount: emailsToProcess.length
     };
 
   } catch (error) {
@@ -53,7 +113,7 @@ function summarizeEmails() {
 
 /**
  * Archives the emails that were previously summarized
- * Phase 1: Placeholder functionality - will be implemented in Phase 2
+ * Phase 2: Gmail Integration - uses stored email IDs for exact archiving
  */
 function archiveProcessedEmails() {
   try {
@@ -66,12 +126,32 @@ function archiveProcessedEmails() {
       };
     }
 
-    // Phase 1: Return placeholder response for testing
-    return {
-      success: true,
-      archivedCount: 0,
-      message: 'Phase 1: Archive functionality placeholder. Actual email archiving will be implemented in Phase 2.'
-    };
+    // Retrieve stored email IDs from previous summarize operation
+    const storedIds = PropertiesService.getScriptProperties().getProperty('WEBAPP_PENDING_ARCHIVE_IDS');
+    if (!storedIds) {
+      return {
+        success: false,
+        error: 'No pending emails to archive. Please generate a summary first.'
+      };
+    }
+
+    const emailIds = JSON.parse(storedIds);
+    if (!emailIds || emailIds.length === 0) {
+      return {
+        success: false,
+        error: 'No email IDs found for archiving'
+      };
+    }
+
+    // Archive emails using GmailService
+    const archiveResult = bulkArchiveEmails_(emailIds);
+
+    if (archiveResult.success) {
+      // Clear stored email IDs after successful archiving
+      PropertiesService.getScriptProperties().deleteProperty('WEBAPP_PENDING_ARCHIVE_IDS');
+    }
+
+    return archiveResult;
 
   } catch (error) {
     Logger.log('WebApp archiveProcessedEmails error: ' + error.toString());
@@ -84,7 +164,7 @@ function archiveProcessedEmails() {
 
 /**
  * Get current status including email count without processing
- * Phase 1: Placeholder functionality - will be implemented in Phase 2
+ * Phase 2: Gmail Integration - provides real email counts
  */
 function getEmailStatus() {
   try {
@@ -97,13 +177,21 @@ function getEmailStatus() {
       };
     }
 
-    // Phase 1: Return placeholder response for testing
+    // Get count of emails with summarize label
+    const discovery = findEmailsWithSummarizeLabel_();
+    if (!discovery.success) {
+      return discovery;
+    }
+
+    // Check if there are pending emails to archive
+    const storedIds = PropertiesService.getScriptProperties().getProperty('WEBAPP_PENDING_ARCHIVE_IDS');
+    const pendingArchiveCount = storedIds ? JSON.parse(storedIds).length : 0;
+
     return {
       success: true,
-      emailCount: 0,
-      pendingArchiveCount: 0,
-      maxEmailsPerSummary: cfg.WEBAPP_MAX_EMAILS_PER_SUMMARY,
-      message: 'Phase 1: Email status placeholder. Actual Gmail integration coming in Phase 2.'
+      emailCount: discovery.count,
+      pendingArchiveCount: pendingArchiveCount,
+      maxEmailsPerSummary: cfg.WEBAPP_MAX_EMAILS_PER_SUMMARY
     };
 
   } catch (error) {
