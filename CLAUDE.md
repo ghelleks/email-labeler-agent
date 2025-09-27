@@ -21,9 +21,9 @@ npm run status            # Check sync status between local and remote
 
 ### Testing and Execution
 ```bash
-npm run run               # Execute the main run() function manually
 npm run logs              # Watch live execution logs from Apps Script
 npm run open:logs         # Open Apps Script logs in browser
+npm run open              # Open Apps Script editor for manual execution
 ```
 
 ### Trigger Management
@@ -34,8 +34,10 @@ npm run trigger:delete    # Remove all existing triggers
 
 ### Deployment
 ```bash
-npm run version           # Create a new stable version
-npm run deploy            # Deploy a new version for sharing
+npm run version           # Create a new version (manual)
+npm run version:stable    # Create timestamped stable version
+npm run deploy            # Create version + deploy with description
+npm run deploy:full       # Complete workflow: version + deploy + update triggers
 ```
 
 ## Architecture Overview
@@ -120,3 +122,4 @@ Refer to `docs/adr/` for complete context:
 2. Verify Gemini API key or Google Cloud project permissions
 3. Review execution logs for detailed error messages
 4. Test with small `MAX_EMAILS_PER_RUN` values during development
+- This project doesn't require test functions that are not part of the regular execution.

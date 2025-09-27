@@ -198,6 +198,30 @@ In the Apps Script editor, configure your project:
 
 If you set `DRY_RUN=true`, the script will analyze emails but won't apply labels yet (recommended for testing).
 
+## Optional: Schedule Automatic Processing
+
+To have the script run automatically every hour, you can install a trigger using either method:
+
+### Method 1: Command Line (Recommended)
+```bash
+npm run trigger:install
+```
+
+### Method 2: Apps Script Editor
+1. In the Apps Script editor, select "installTrigger" from the function dropdown
+2. Click the "Run" button (▶️)
+3. Check the "Triggers" section in the left sidebar to confirm it was created
+
+### Managing Triggers
+
+To remove all triggers (useful when updating):
+```bash
+npm run trigger:delete
+```
+
+**Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
+
+**Pro tip**: Use `npm run deploy:full` when making major updates—it automatically reinstalls triggers to ensure they use your latest deployment.
 
 ## Understanding Your Results
 
@@ -309,17 +333,33 @@ You can customize how emails are categorized by creating a rules document:
 2. Get the document's URL (share link)
 3. Add `RULE_DOC_URL` to your Script Properties with this URL
 
+**Important**: If you configure a rules document, it must be accessible to the Apps Script project. The script will fail with a clear error message if the document cannot be read, rather than silently falling back to defaults.
+
 The system includes sensible defaults, so this is completely optional.
 
 ## Useful Commands
 
 Once set up, these commands help you manage your project:
 
+### Development Commands
 ```bash
-npm run push          # Upload code changes
-npm run open          # Open Apps Script editor
+npm run push          # Upload code changes to Apps Script
+npm run open          # Open Apps Script editor in browser
 npm run logs          # Watch live execution logs
-npm run run           # Run the script manually
+npm run status        # Check sync status between local and remote
+```
+
+### Deployment Commands
+```bash
+npm run deploy        # Create stable version and deploy
+npm run deploy:full   # Deploy and reinstall triggers (recommended for major updates)
+npm run version:stable # Create timestamped stable version
+```
+
+### Trigger Management
+```bash
+npm run trigger:install  # Install hourly processing trigger
+npm run trigger:delete   # Remove all existing triggers
 ```
 
 ## Troubleshooting
@@ -377,16 +417,80 @@ All settings are optional and have sensible defaults:
 | `DRY_RUN` | `false` | Test mode (analyze but don't apply labels) |
 | `DEBUG` | `false` | Verbose logging for troubleshooting |
 
+## Updating and Deploying the Script
 
-## Updating the Script
+### Development Updates
 
-When you want to update to a newer version:
+For simple code changes during development:
 
 ```bash
 npm run push
 ```
 
 This uploads any code changes to your Apps Script project.
+
+### Production Deployments
+
+For significant updates (like model changes or new features), use the proper deployment workflow:
+
+#### Quick Deployment
+```bash
+npm run deploy
+```
+
+This command:
+1. Creates a timestamped stable version (e.g., `stable-20241127-143052`)
+2. Deploys that version as a new deployment
+3. Provides a stable rollback point if needed
+
+#### Full Deployment with Trigger Reset
+```bash
+npm run deploy:full
+```
+
+This command:
+1. Runs the complete deployment process
+2. Reinstalls the hourly trigger to ensure it uses the new deployment
+3. **Use this when**: Updating AI models, changing trigger behavior, or major functionality changes
+
+**Why use deployment commands?** They create stable versions with timestamps, making it easy to track changes and rollback if something goes wrong. This is especially important when updating AI models or core functionality.
+
+### Manual Version Control
+
+You can also create versions manually:
+
+```bash
+npm run version:stable    # Creates a timestamped stable version
+npm run version          # Creates a version with custom description
+```
+
+### Understanding Deployments vs Versions
+
+- **Versions**: Snapshots of your code with descriptions (like git tags)
+- **Deployments**: Published versions that can be shared or accessed via URL
+- **Development**: Your working code that runs when you click "Run" in the editor
+
+**Best Practice**: Use `npm run deploy:full` when updating your AI model or making significant changes to ensure everything works correctly together.
+
+### When to Use Each Command
+
+| Scenario | Command | Why |
+|----------|---------|-----|
+| Quick bug fix or minor tweak | `npm run push` | Fast, works for development |
+| New feature or configuration change | `npm run deploy` | Creates stable version for rollback |
+| AI model update or trigger changes | `npm run deploy:full` | Ensures triggers use new deployment |
+| Testing new changes | `npm run push` + manual testing | Safe development workflow |
+
+### Example: Updating AI Model
+
+When you update your AI model (like switching to a newer Gemini version):
+
+1. Make your code changes locally
+2. Test with `npm run push` and manual execution
+3. Once satisfied, deploy with `npm run deploy:full`
+4. Verify the trigger is working with the new model
+
+This ensures your scheduled runs use the updated model and any trigger-related changes take effect.
 
 ## Uninstalling
 

@@ -8,6 +8,8 @@ function getRuleText_(docIdOrUrl) {
     return getDefaultPolicyText_();
   }
 
+  // User explicitly specified a rule document - we should error if it fails
+
   // Extract Doc ID from URL variants or accept raw ID
   var docId = docIdOrUrl;
   if (/^https?:\/\//i.test(docIdOrUrl)) {
@@ -22,36 +24,91 @@ function getRuleText_(docIdOrUrl) {
   }
 
   if (!docId) {
-    return getDefaultPolicyText_();
+    const errorMsg = `Failed to extract document ID from rule document URL: "${docIdOrUrl}". ` +
+      `Please check that RULE_DOC_URL or RULE_DOC_ID contains a valid Google Docs URL or document ID. ` +
+      `Expected format: https://docs.google.com/document/d/DOCUMENT_ID/edit or just the document ID.`;
+    throw new Error(errorMsg);
   }
 
   try {
-    const url = 'https://docs.google.com/feeds/download/documents/export/Export?exportFormat=markdown&id=' + encodeURIComponent(docId);
-    const token = ScriptApp.getOAuthToken();
-    const response = UrlFetchApp.fetch(url, {
-      headers: { Authorization: 'Bearer ' + token },
-      followRedirects: true,
-      muteHttpExceptions: true,
+    // Use Google Docs export URL to get markdown format
+    const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=md`;
+
+    if (debug) {
+      console.log(JSON.stringify({
+        ruleDocSource: 'docs-export-url',
+        docId: docId,
+        exportUrl: exportUrl
+      }, null, 2));
+    }
+
+    const response = UrlFetchApp.fetch(exportUrl, {
+      headers: {
+        'Authorization': 'Bearer ' + ScriptApp.getOAuthToken()
+      },
+      muteHttpExceptions: true
     });
 
-    const code = response.getResponseCode();
-    const body = response.getContentText('utf-8');
+    if (response.getResponseCode() !== 200) {
+      const errorMsg = `Failed to fetch rule document (HTTP ${response.getResponseCode()}): ${response.getContentText()}. ` +
+        `Document ID: ${docId}. Please check that the document exists and is accessible.`;
+      throw new Error(errorMsg);
+    }
+
+    const content = response.getContentText();
+
+    if (!content || !content.trim()) {
+      const errorMsg = `Rule document is empty (ID: ${docId}). ` +
+        `Please add content to the document or remove RULE_DOC_URL/RULE_DOC_ID to use default rules.`;
+      throw new Error(errorMsg);
+    }
 
     if (debug) {
-      console.log(JSON.stringify({ ruleDocSource: 'docs-export-markdown', docId: docId, status: code, textLength: body ? body.length : 0 }, null, 2));
+      console.log(JSON.stringify({
+        ruleDocSuccess: true,
+        contentLength: content.length,
+        contentPreview: content.substring(0, 200) + (content.length > 200 ? '...' : '')
+      }, null, 2));
     }
 
-    if (code === 200 && body && body.trim()) {
-      return body;
-    }
+    return content;
 
-    // Non-200 or empty body
-    return getDefaultPolicyText_();
   } catch (e) {
-    if (debug) {
-      console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'urlfetch-error', docId: docId, error: e && e.toString ? e.toString() : String(e) }, null, 2));
+    if (e.message && e.message.includes('Rule document is empty')) {
+      // Re-throw our custom empty document errors
+      throw e;
     }
-    return getDefaultPolicyText_();
+
+    if (e.message && e.message.includes('Failed to fetch rule document')) {
+      // Re-throw our custom fetch errors (includes HTTP status codes)
+      throw e;
+    }
+
+    // Handle UrlFetch and authorization errors
+    const errorMessage = e && e.toString ? e.toString() : String(e);
+
+    if (errorMessage.includes('Request failed') || errorMessage.includes('Exception: Request failed')) {
+      const errorMsg = `Unable to fetch rule document (ID: ${docId}). ` +
+        `The document may not exist, may be private, or you may lack permission to access it. ` +
+        `Please verify the document ID in RULE_DOC_URL/RULE_DOC_ID, or remove it to use default rules.`;
+      throw new Error(errorMsg);
+    }
+
+    if (errorMessage.includes('Authorization') || errorMessage.includes('authentication')) {
+      const errorMsg = `Authorization error accessing rule document (ID: ${docId}). ` +
+        `Please ensure this Apps Script project has permission to access Google Docs. ` +
+        `Try running any function in the Apps Script editor to refresh authorization, ` +
+        `or remove RULE_DOC_URL/RULE_DOC_ID to use default rules.`;
+      throw new Error(errorMsg);
+    }
+
+    // Other URL fetch errors
+    const errorMsg = `Error fetching rule document via Google Docs export (ID: ${docId}): ${errorMessage}. ` +
+      `Please check that the document exists and is accessible, or remove RULE_DOC_URL/RULE_DOC_ID to use default rules.`;
+    if (debug) {
+      console.error('Full error details:', e);
+    }
+    throw new Error(errorMsg);
   }
 }
 
@@ -73,21 +130,4 @@ function getDefaultPolicyText_() {
   );
 }
 
-// Test function to debug Google Doc access (remove after testing)
-function testRuleDocAccess() {
-  // Enable debug mode temporarily
-  PropertiesService.getScriptProperties().setProperty('DEBUG', 'true');
 
-  // Test with your actual Google Doc URL
-  const testUrl = PropertiesService.getScriptProperties().getProperty('RULE_DOC_URL');
-
-  console.log('Testing rule doc access with URL:', testUrl);
-
-  if (testUrl) {
-    const result = getRuleText_(testUrl);
-    console.log('Result length:', result.length);
-    console.log('First 200 characters:', result.substring(0, 200));
-  } else {
-    console.log('No RULE_DOC_URL set in script properties');
-  }
-}
