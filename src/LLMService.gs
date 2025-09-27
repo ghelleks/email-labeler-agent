@@ -117,48 +117,8 @@ function generateConsolidatedSummary_(emailContents, config) {
       };
     }
 
-    // Combine all email content for single AI request
-    let combinedContent = `EMAILS TO SUMMARIZE (${emailContents.length} total):\n\n`;
-
-    for (let i = 0; i < emailContents.length; i++) {
-      const email = emailContents[i];
-      combinedContent += `--- EMAIL ${i + 1} ---\n`;
-      combinedContent += `From: ${email.from}\n`;
-      combinedContent += `Subject: ${email.subject}\n`;
-      combinedContent += `Date: ${email.date}\n`;
-      combinedContent += `Content: ${email.body.substring(0, cfg.BODY_CHARS || 1200)}\n\n`;
-    }
-
-    // Build web links section if provided
-    let webLinksSection = '';
-    if (config.includeWebLinks && config.includeWebLinks.length > 0) {
-      webLinksSection = '\n\nWEB LINKS FOUND IN EMAILS:\n' + config.includeWebLinks.join('\n');
-    }
-
-    // Prepare prompt for consolidated summary in "The Economist's World in Brief" style
-    const prompt = `Please create a consolidated summary of these ${emailContents.length} emails in the style of "The Economist's World in Brief" - concise, direct, and informative.
-
-REQUIREMENTS:
-1. Create ONE unified summary covering all emails
-2. Use **bold formatting** for important terms, people, places, and proper nouns
-3. Group related topics together intelligently
-4. Keep the tone professional, authoritative, and concise
-5. Extract and mention important web URLs from the email content
-6. Focus on key insights, decisions, and actionable information
-7. Maximum length: 400 words
-8. Structure: Brief introduction, then organized by themes/topics
-9. Include context that helps understand the significance of information
-
-STYLE NOTES:
-- Write like a seasoned journalist summarizing global events
-- Be direct and factual, avoid unnecessary adjectives
-- Use present tense where appropriate
-- Group similar topics under implicit themes
-- Prioritize information by importance and urgency
-
-${combinedContent}${webLinksSection}
-
-Please provide only the summary text with **bold** formatting for key terms. Do not include introductory phrases like "Here is a summary" - start directly with the content.`;
+    // Build the prompt using PromptBuilder for consistency
+    const prompt = buildSummaryPrompt_(emailContents, config);
 
     // Prepare API request using existing patterns
     const payload = {

@@ -111,21 +111,8 @@ function summarizeEmails() {
 
     let summaryText = summaryResult.summary;
 
-    // Add source email links at the end of the summary
-    if (emailLinks.length > 0) {
-      summaryText += '\n\n**Source Emails:**\n';
-      emailLinks.forEach(function(link, index) {
-        summaryText += `• [${link.subject}](${link.url})\n`;
-      });
-    }
-
-    // Add web links if found and not already included in summary
-    if (webLinks.length > 0) {
-      summaryText += '\n**Referenced Links:**\n';
-      webLinks.forEach(function(url) {
-        summaryText += `• ${url}\n`;
-      });
-    }
+    // The AI now includes both source references and web links inline within themes
+    // No additional processing needed here
 
     return {
       success: true,

@@ -95,8 +95,57 @@
             color: #333;
         }
 
+        .summary-content h1,
+        .summary-content h2,
+        .summary-content h3 {
+            color: #007AFF;
+            font-weight: 600;
+        }
+
+        .summary-content h1 {
+            font-size: 20px;
+            margin: 30px 0 20px 0;
+        }
+
+        .summary-content h2 {
+            font-size: 18px;
+            margin: 25px 0 15px 0;
+        }
+
+        .summary-content h3 {
+            font-size: 16px;
+            margin: 20px 0 10px 0;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 5px;
+        }
+
+        .summary-content a {
+            color: #007AFF;
+            text-decoration: none;
+            border-bottom: 1px solid #007AFF;
+        }
+
+        .summary-content a:hover {
+            background-color: rgba(0, 122, 255, 0.1);
+            text-decoration: none;
+        }
+
         .summary-content strong {
             color: #007AFF;
+        }
+
+        .summary-content em {
+            font-style: italic;
+            color: #666;
+        }
+
+        .summary-content ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .summary-content li {
+            margin: 5px 0;
         }
 
         .email-links {
@@ -307,6 +356,29 @@
             .email-link:hover {
                 background: #3a3a3c;
             }
+
+            .summary-content h1,
+            .summary-content h2,
+            .summary-content h3 {
+                color: #007AFF;
+            }
+
+            .summary-content h3 {
+                border-bottom-color: #3a3a3c;
+            }
+
+            .summary-content a {
+                color: #007AFF;
+                border-bottom-color: #007AFF;
+            }
+
+            .summary-content a:hover {
+                background-color: rgba(0, 122, 255, 0.2);
+            }
+
+            .summary-content em {
+                color: #ccc;
+            }
         }
     </style>
 </head>
@@ -429,19 +501,43 @@
             const archiveBtn = document.getElementById('archiveBtn');
             const archiveText = document.getElementById('archiveText');
 
-            // Display the AI-generated summary with bold formatting
-            summaryContent.innerHTML = summaryData.summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Comprehensive markdown-to-HTML renderer
+            function renderMarkdownToHtml(markdownText) {
+                let html = markdownText;
 
-            // Display email links if available
-            if (summaryData.emailLinks && summaryData.emailLinks.length > 0) {
-                emailLinks.innerHTML = `
-                    <h6>Source Emails (${summaryData.emailLinks.length}):</h6>
-                    ${summaryData.emailLinks.map(link =>
-                        `<a href="${link.url}" class="email-link" target="_blank">${link.subject}</a>`
-                    ).join('')}
-                `;
-                emailLinks.classList.remove('hidden');
+                // Convert headers (### format)
+                html = html.replace(/^### (.+)$/gm, '<h3 style="color: #007AFF; font-size: 16px; font-weight: 600; margin: 20px 0 10px 0; border-bottom: 2px solid #e9ecef; padding-bottom: 5px;">$1</h3>');
+
+                // Convert headers (## format)
+                html = html.replace(/^## (.+)$/gm, '<h2 style="color: #007AFF; font-size: 18px; font-weight: 600; margin: 25px 0 15px 0;">$1</h2>');
+
+                // Convert headers (# format)
+                html = html.replace(/^# (.+)$/gm, '<h1 style="color: #007AFF; font-size: 20px; font-weight: 600; margin: 30px 0 20px 0;">$1</h1>');
+
+                // Convert bold text
+                html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #007AFF;">$1</strong>');
+
+                // Convert italic text
+                html = html.replace(/\*(.*?)\*/g, '<em style="font-style: italic;">$1</em>');
+
+                // Convert markdown links to HTML with proper styling
+                html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: #007AFF; text-decoration: none; border-bottom: 1px solid #007AFF;">$1</a>');
+
+                // Convert line breaks to HTML
+                html = html.replace(/\n/g, '<br>');
+
+                // Convert bullet lists (simple implementation)
+                html = html.replace(/^- (.+)$/gm, '<li style="margin: 5px 0;">$1</li>');
+                html = html.replace(/(<li.*<\/li>)/s, '<ul style="margin: 10px 0; padding-left: 20px;">$1</ul>');
+
+                return html;
             }
+
+            // Display the AI-generated summary with comprehensive markdown rendering
+            const formattedSummary = renderMarkdownToHtml(summaryData.summary);
+            summaryContent.innerHTML = formattedSummary;
+
+            // Email links are now integrated within the summary themes, so no separate section needed
 
             // Show stats
             stats.innerHTML = `
@@ -533,7 +629,7 @@
             if (isProcessing || currentEmailCount === 0) return;
 
             const emailText = currentEmailCount === 1 ? 'email' : 'emails';
-            if (!confirm(`Archive ${currentEmailCount} ${emailText}?\n\nThis will:\n• Remove the "summarize" label\n• Move emails to Archive folder\n• Clear the current summary\n\nThis action cannot be undone.`)) {
+            if (!confirm(`Archive ${currentEmailCount} ${emailText}?\n\nThis will:\n• Move emails to Archive folder\n• Keep the "summarize" label for future processing\n• Clear the current summary\n\nThis action cannot be undone.`)) {
                 return;
             }
 

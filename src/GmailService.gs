@@ -77,7 +77,7 @@ function findEmailsWithSummarizeLabel_() {
 }
 
 /**
- * Archive multiple emails by ID and remove summarize label
+ * Archive multiple emails by ID while keeping the summarize label
  * Returns: { success: boolean, archivedCount: number, message?: string, error?: string }
  */
 function bulkArchiveEmails_(emailIds) {
@@ -89,7 +89,6 @@ function bulkArchiveEmails_(emailIds) {
       };
     }
 
-    const summarizeLabel = GmailApp.getUserLabelByName('summarize');
     let archivedCount = 0;
     const errors = [];
 
@@ -98,12 +97,7 @@ function bulkArchiveEmails_(emailIds) {
         const message = GmailApp.getMessageById(emailIds[i]);
         const thread = message.getThread();
 
-        // Remove summarize label
-        if (summarizeLabel) {
-          thread.removeLabel(summarizeLabel);
-        }
-
-        // Archive the thread
+        // Archive the thread (keeping all labels including 'summarize')
         thread.moveToArchive();
         archivedCount++;
 
