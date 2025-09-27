@@ -227,6 +227,8 @@ You can customize how emails are categorized by creating a rules document:
 2. Get the document's URL (share link)
 3. Add `RULE_DOC_URL` to your Script Properties with this URL
 
+**Important**: If you configure a rules document, it must be accessible to the Apps Script project. The script will fail with a clear error message if the document cannot be read, rather than silently falling back to defaults.
+
 The system includes sensible defaults, so this is completely optional.
 
 ## Useful Commands

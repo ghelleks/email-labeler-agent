@@ -122,3 +122,4 @@ Refer to `docs/adr/` for complete context:
 2. Verify Gemini API key or Google Cloud project permissions
 3. Review execution logs for detailed error messages
 4. Test with small `MAX_EMAILS_PER_RUN` values during development
+- This project doesn't require test functions that are not part of the regular execution.

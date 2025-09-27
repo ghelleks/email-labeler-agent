@@ -8,6 +8,8 @@ function getRuleText_(docIdOrUrl) {
     return getDefaultPolicyText_();
   }
 
+  // User explicitly specified a rule document - we should error if it fails
+
   // Extract Doc ID from URL variants or accept raw ID
   var docId = docIdOrUrl;
   if (/^https?:\/\//i.test(docIdOrUrl)) {
@@ -22,36 +24,82 @@ function getRuleText_(docIdOrUrl) {
   }
 
   if (!docId) {
-    return getDefaultPolicyText_();
+    const errorMsg = `Failed to extract document ID from rule document URL: "${docIdOrUrl}". ` +
+      `Please check that RULE_DOC_URL or RULE_DOC_ID contains a valid Google Docs URL or document ID. ` +
+      `Expected format: https://docs.google.com/document/d/DOCUMENT_ID/edit or just the document ID.`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   try {
-    const url = 'https://docs.google.com/feeds/download/documents/export/Export?exportFormat=markdown&id=' + encodeURIComponent(docId);
-    const token = ScriptApp.getOAuthToken();
-    const response = UrlFetchApp.fetch(url, {
-      headers: { Authorization: 'Bearer ' + token },
-      followRedirects: true,
-      muteHttpExceptions: true,
-    });
-
-    const code = response.getResponseCode();
-    const body = response.getContentText('utf-8');
+    // Use Drive API for more reliable access and better error handling
+    const file = DriveApp.getFileById(docId);
 
     if (debug) {
-      console.log(JSON.stringify({ ruleDocSource: 'docs-export-markdown', docId: docId, status: code, textLength: body ? body.length : 0 }, null, 2));
+      console.log(JSON.stringify({
+        ruleDocSource: 'drive-api',
+        docId: docId,
+        fileName: file.getName(),
+        mimeType: file.getBlob().getContentType(),
+        fileSize: file.getSize()
+      }, null, 2));
     }
 
-    if (code === 200 && body && body.trim()) {
-      return body;
+    // Get the document content as text
+    const blob = file.getBlob();
+    const content = blob.getDataAsString();
+
+    if (!content || !content.trim()) {
+      const errorMsg = `Rule document is empty (ID: ${docId}, Name: "${file.getName()}"). ` +
+        `Please add content to the document or remove RULE_DOC_URL/RULE_DOC_ID to use default rules.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
-    // Non-200 or empty body
-    return getDefaultPolicyText_();
+    if (debug) {
+      console.log(JSON.stringify({
+        ruleDocSuccess: true,
+        contentLength: content.length,
+        fileName: file.getName()
+      }, null, 2));
+    }
+
+    return content;
+
   } catch (e) {
-    if (debug) {
-      console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'urlfetch-error', docId: docId, error: e && e.toString ? e.toString() : String(e) }, null, 2));
+    if (e.message && e.message.includes('Rule document is empty')) {
+      // Re-throw our custom empty document errors
+      throw e;
     }
-    return getDefaultPolicyText_();
+
+    // Handle Drive API specific errors
+    const errorMessage = e && e.toString ? e.toString() : String(e);
+
+    if (errorMessage.includes('File not found') || errorMessage.includes('Requested entity was not found')) {
+      const errorMsg = `Rule document not found (ID: ${docId}). ` +
+        `The document may have been deleted, moved, or the ID is incorrect. ` +
+        `Please verify the document ID in RULE_DOC_URL/RULE_DOC_ID, or remove it to use default rules.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    if (errorMessage.includes('Permission denied') || errorMessage.includes('Access denied')) {
+      const errorMsg = `No permission to access rule document (ID: ${docId}). ` +
+        `This Apps Script project needs permission to read your Google Drive files. ` +
+        `Please run the script once to authorize Drive access, or share the document with the Apps Script project, ` +
+        `or remove RULE_DOC_URL/RULE_DOC_ID to use default rules.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    // Other Drive API errors
+    const errorMsg = `Error accessing rule document via Drive API (ID: ${docId}): ${errorMessage}. ` +
+      `Please check that the document exists and is accessible, or remove RULE_DOC_URL/RULE_DOC_ID to use default rules.`;
+    console.error(errorMsg);
+    if (debug) {
+      console.error('Full error details:', e);
+    }
+    throw new Error(errorMsg);
   }
 }
 
@@ -73,21 +121,3 @@ function getDefaultPolicyText_() {
   );
 }
 
-// Test function to debug Google Doc access (remove after testing)
-function testRuleDocAccess() {
-  // Enable debug mode temporarily
-  PropertiesService.getScriptProperties().setProperty('DEBUG', 'true');
-
-  // Test with your actual Google Doc URL
-  const testUrl = PropertiesService.getScriptProperties().getProperty('RULE_DOC_URL');
-
-  console.log('Testing rule doc access with URL:', testUrl);
-
-  if (testUrl) {
-    const result = getRuleText_(testUrl);
-    console.log('Result length:', result.length);
-    console.log('First 200 characters:', result.substring(0, 200));
-  } else {
-    console.log('No RULE_DOC_URL set in script properties');
-  }
-}
