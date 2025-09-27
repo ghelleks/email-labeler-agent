@@ -250,11 +250,34 @@ npm run run           # Run the script manually
 - **Solution**: Check that you have recent emails without existing labels
 - **Solution**: Set `DEBUG=true` and check the execution logs
 
+### Web App Troubleshooting
+
+**🔍 Problem**: Web app shows "Web app functionality is disabled"
+- **Solution**: Set `WEBAPP_ENABLED=true` in Script Properties
+- **Solution**: Redeploy the web app if the setting was changed after deployment
+
+**🔍 Problem**: "No emails found with 'summarize' label"
+- **Solution**: Apply the `summarize` label to some emails in Gmail first
+- **Solution**: Verify the label exists and is spelled correctly (all lowercase)
+
+**🔍 Problem**: Web app times out during summarization
+- **Solution**: Reduce `WEBAPP_MAX_EMAILS_PER_SUMMARY` to a smaller number (try `10`)
+- **Solution**: Check that `DAILY_GEMINI_BUDGET` hasn't been exceeded
+
+**🔍 Problem**: Archive button doesn't work
+- **Solution**: Ensure you've generated a summary first before trying to archive
+- **Solution**: Check that emails still have the `summarize` label applied
+
+**🔍 Problem**: Web app URL not working
+- **Solution**: Redeploy the web app and get a new URL
+- **Solution**: Check that deployment type is set to "Web app" not "API executable"
+
 ### Getting Help
 
 1. **Check the execution logs**: In Apps Script editor, look at the bottom panel after running
 2. **Enable debug mode**: Set `DEBUG=true` in Script Properties for detailed logging
 3. **Try dry run mode**: Set `DRY_RUN=true` to test without making changes
+4. **Web app debugging**: Check browser console (F12) for JavaScript errors in the web interface
 
 ## Security Notes
 
@@ -263,9 +286,52 @@ npm run run           # Run the script manually
 - **Data**: Email content is sent to Google's Gemini AI for analysis but isn't stored permanently
 - **Revoke access**: You can remove permissions anytime in your [Google Account settings](https://myaccount.google.com/permissions)
 
+## Interactive Web App Dashboard
+
+In addition to automatic email labeling, this system includes an **Interactive Web App Dashboard** for on-demand email summarization and archiving. This mobile-optimized interface allows you to:
+
+- Get AI-powered summaries of emails labeled with `summarize`
+- Archive processed emails with one tap
+- View email count status and links to source emails
+- Access from any device through a simple web interface
+
+### Web App Features
+
+- **Mobile-First Design**: Touch-optimized interface that works on phones, tablets, and desktop
+- **AI Summarization**: Generates consolidated summaries in "The Economist's World in Brief" style
+- **Email Count Accuracy**: Ensures exact count consistency between summary and archive operations
+- **Source Email Links**: Direct links to Gmail threads for reference
+- **Web Link Extraction**: Automatically extracts and displays URLs found in emails
+- **Dark Mode Support**: Automatically adapts to device preferences
+
+### Web App Setup
+
+1. **Deploy the Web App** (one-time setup):
+   - In the Apps Script editor, click "Deploy" → "New deployment"
+   - Choose type: "Web app"
+   - Execute as: "Me"
+   - Who has access: "Only myself"
+   - Click "Deploy" and copy the web app URL
+
+2. **Access Your Dashboard**:
+   - Open the web app URL in any browser
+   - Bookmark it for easy access on your phone/tablet
+
+### How to Use the Web App
+
+1. **Label emails for summarization**: Apply the `summarize` label to emails in Gmail
+2. **Open the web dashboard**: Visit your web app URL
+3. **Get Summary**: Tap "Get Summary" to process all emails with the `summarize` label
+4. **Review the summary**: Read the AI-generated consolidated summary with source links
+5. **Archive emails**: Tap "Archive X Emails" to remove labels and archive the processed emails
+
+**Pro Tip**: The web app is perfect for processing newsletters, long email threads, or multiple related emails at once.
+
 ## Configuration Reference
 
 All settings are optional and have sensible defaults:
+
+### Core Email Processing
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -276,6 +342,18 @@ All settings are optional and have sensible defaults:
 | `DAILY_GEMINI_BUDGET` | `50` | Maximum AI API calls per day |
 | `DRY_RUN` | `false` | Test mode (analyze but don't apply labels) |
 | `DEBUG` | `false` | Verbose logging for troubleshooting |
+
+### Web App Configuration
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `WEBAPP_ENABLED` | `true` | Enable/disable web app functionality |
+| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `25` | Maximum emails to process in web app per summary |
+
+**Web App Settings Details**:
+
+- **`WEBAPP_ENABLED`**: Set to `false` to completely disable web app features while keeping automatic labeling active
+- **`WEBAPP_MAX_EMAILS_PER_SUMMARY`**: Controls performance and readability by limiting emails per summary. Larger numbers may cause timeouts or very long summaries
 
 ## Updating the Script
 
