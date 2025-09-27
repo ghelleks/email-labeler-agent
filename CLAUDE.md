@@ -30,17 +30,32 @@ npm run open              # Open Apps Script editor for manual execution
 ```bash
 npm run trigger:install   # Install hourly email processing trigger
 npm run trigger:delete    # Remove all existing triggers
+npm run trigger:list      # List currently installed triggers
 ```
 
 ### Deployment
 ```bash
+# Core Deployment Scripts
+npm run deploy            # Basic versioned deployment
+npm run deploy:triggers   # Deploy with email processing triggers
+npm run deploy:webapp     # Deploy web app only
+npm run deploy:all        # 🚀 RECOMMENDED: Deploy everything (webapp + triggers)
+
+# Web App Utilities
+npm run webapp:url                   # Get current web app URL
+npm run webapp:open                  # Open Apps Script for manual URL access
+npm run webapp:deploy-and-open       # Deploy webapp + open for URL retrieval
+
+# Version Management
 npm run version           # Create a new version (manual)
 npm run version:stable    # Create timestamped stable version
-npm run deploy            # Create version + deploy with description (includes web app URL)
-npm run deploy:full       # Complete workflow: version + deploy + update triggers
-npm run deploy:webapp     # Deploy web app and display URL immediately
-npm run webapp:url        # Get current web app URL anytime
 ```
+
+#### Deployment Strategy Guide
+- **First-time setup**: Use `npm run deploy:all` for complete system setup
+- **Web app only updates**: Use `npm run deploy:webapp` for quick web interface testing
+- **Email processing only**: Use `npm run deploy:triggers` for backend-only updates
+- **Production updates**: Use `npm run deploy:all` to update both components simultaneously
 
 ## Architecture Overview
 

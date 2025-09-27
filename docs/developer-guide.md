@@ -51,13 +51,13 @@ clasp login --no-localhost
 
 Project setup (first time):
 ```bash
-clasp create --type standalone --title "Gmail Labeler (Mail Screener)" --rootDir ./src
+npm run create
 ```
 
 Daily workflow:
 ```bash
-clasp push
-clasp open-script
+npm run push
+npm run open
 ```
 
 ## Execution Flow
@@ -215,11 +215,15 @@ The handler receives an `AgentContext` and returns an `AgentResult`.
 ## Versioning & Releases
 - Create a version:
 ```bash
-clasp version "stable"
+npm run version:stable
 ```
-- Deploy web app endpoints (if you add them later):
+- Deploy complete system:
 ```bash
-clasp deploy --description "v1"
+npm run deploy:all
+```
+- Deploy web app only:
+```bash
+npm run deploy:webapp
 ```
 
 ## Notes

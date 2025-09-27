@@ -221,7 +221,7 @@ npm run trigger:delete
 
 **Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
 
-**Pro tip**: Use `npm run deploy:full` when making major updates—it automatically reinstalls triggers to ensure they use your latest deployment.
+**Pro tip**: Use `npm run deploy:all` when making major updates—it automatically reinstalls triggers to ensure they use your latest deployment.
 
 ## Understanding Your Results
 
@@ -368,16 +368,18 @@ npm run status        # Check sync status between local and remote
 
 ### Deployment Commands
 ```bash
-npm run deploy        # Create stable version and deploy (includes web app URL)
-npm run deploy:full   # Deploy and reinstall triggers (recommended for major updates)
-npm run deploy:webapp # Deploy web app and get URL (for web app setup)
-npm run version:stable # Create timestamped stable version
+npm run deploy            # Basic versioned deployment
+npm run deploy:triggers   # Deploy with email processing triggers
+npm run deploy:webapp     # Deploy web app only
+npm run deploy:all        # Deploy everything (webapp + triggers) - RECOMMENDED
+npm run version:stable    # Create timestamped stable version
 ```
 
 ### Trigger Management
 ```bash
 npm run trigger:install  # Install hourly processing trigger
 npm run trigger:delete   # Remove all existing triggers
+npm run trigger:list     # List currently installed triggers
 ```
 
 ## Troubleshooting
@@ -458,7 +460,7 @@ This uploads any code changes to your Apps Script project but doesn't create dep
 
 For significant updates (like model changes or new features), use the proper deployment workflow:
 
-#### Code Deployment with Web App URL
+#### Basic Deployment
 ```bash
 npm run deploy
 ```
@@ -466,18 +468,18 @@ npm run deploy
 This command:
 1. Creates a timestamped stable version (e.g., `stable-20241127-143052`)
 2. Deploys that version as a new deployment
-3. **Automatically displays your web app URL** for easy access
-4. Provides a stable rollback point if needed
+3. Provides a stable rollback point if needed
 
-#### Full Deployment with Trigger Reset
+#### Complete System Deployment
 ```bash
-npm run deploy:full
+npm run deploy:all
 ```
 
 This command:
 1. Runs the complete deployment process
-2. Reinstalls the hourly trigger to ensure it uses the new deployment
-3. **Use this when**: Updating AI models, changing trigger behavior, or major functionality changes
+2. Automatically installs the hourly trigger to ensure it uses the new deployment
+3. **Use this when**: First-time setup, updating AI models, changing trigger behavior, or major functionality changes
+4. **Recommended for most production updates**
 
 #### Web App Only Deployment
 ```bash
@@ -507,15 +509,16 @@ npm run version          # Creates a version with custom description
 - **Deployments**: Published versions that can be shared or accessed via URL
 - **Development**: Your working code that runs when you click "Run" in the editor
 
-**Best Practice**: Use `npm run deploy:full` when updating your AI model or making significant changes to ensure everything works correctly together.
+**Best Practice**: Use `npm run deploy:all` when updating your AI model or making significant changes to ensure everything works correctly together.
 
 ### When to Use Each Command
 
 | Scenario | Command | Why |
 |----------|---------|-----|
 | Quick bug fix or minor tweak | `npm run push` | Fast, works for development |
-| New feature or configuration change | `npm run deploy` | Creates stable version for rollback + shows web app URL |
-| AI model update or trigger changes | `npm run deploy:full` | Ensures triggers use new deployment |
+| New feature or configuration change | `npm run deploy` | Creates stable version for rollback |
+| Complete system setup or major updates | `npm run deploy:all` | Ensures triggers use new deployment + full system setup |
+| Email processing setup only | `npm run deploy:triggers` | Backend deployment with trigger installation |
 | Setting up web app for first time | `npm run deploy:webapp` | Quick web app deployment with immediate URL |
 | Getting web app URL after setup | `npm run webapp:url` | Shows current web app URL and instructions |
 | Testing new changes | `npm run push` + manual testing | Safe development workflow |
@@ -526,7 +529,7 @@ When you update your AI model (like switching to a newer Gemini version):
 
 1. Make your code changes locally
 2. Test with `npm run push` and manual execution
-3. Once satisfied, deploy with `npm run deploy:full`
+3. Once satisfied, deploy with `npm run deploy:all`
 4. Verify the trigger is working with the new model
 
 This ensures your scheduled runs use the updated model and any trigger-related changes take effect.

@@ -298,6 +298,7 @@ When reporting issues, include:
 ### Key Commands
 ```bash
 npm run deploy:webapp # Deploy web app and get URL (recommended)
+npm run deploy:all    # Deploy complete system (webapp + triggers)
 npm run webapp:url    # Get current web app URL anytime
 npm run push          # Upload code changes
 npm run open          # Open Apps Script editor
