@@ -9,26 +9,18 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// Configuration file to store deployment IDs
-const DEPLOYMENT_CONFIG_FILE = path.join(__dirname, '..', 'webapp-deployments.json');
-
-function loadDeploymentConfig() {
-  if (fs.existsSync(DEPLOYMENT_CONFIG_FILE)) {
-    return JSON.parse(fs.readFileSync(DEPLOYMENT_CONFIG_FILE, 'utf8'));
-  }
-  return { deployments: {} };
-}
-
-function saveDeploymentConfig(config) {
-  fs.writeFileSync(DEPLOYMENT_CONFIG_FILE, JSON.stringify(config, null, 2));
-}
+// Use accounts.json for all configuration including deployment IDs
+const ACCOUNTS_CONFIG_FILE = path.join(__dirname, '..', 'accounts.json');
 
 function getAccountConfig() {
-  const accountsFile = path.join(__dirname, '..', 'accounts.json');
-  if (!fs.existsSync(accountsFile)) {
+  if (!fs.existsSync(ACCOUNTS_CONFIG_FILE)) {
     throw new Error('accounts.json not found. Run: npm run setup:account');
   }
-  return JSON.parse(fs.readFileSync(accountsFile, 'utf8'));
+  return JSON.parse(fs.readFileSync(ACCOUNTS_CONFIG_FILE, 'utf8'));
+}
+
+function saveAccountConfig(config) {
+  fs.writeFileSync(ACCOUNTS_CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
 function execCommand(command, description) {
@@ -72,7 +64,7 @@ function findWebAppDeployment(account) {
 function deployToAccount(account) {
   console.log(`\n📦 Deploying to ${account} account...`);
 
-  const config = loadDeploymentConfig();
+  const config = getAccountConfig();
 
   // Step 1: Push latest code
   execCommand(
@@ -90,7 +82,7 @@ function deployToAccount(account) {
   const versionNumber = versionMatch ? versionMatch[1] : 'HEAD';
 
   // Step 3: Deploy or redeploy
-  let deploymentId = config.deployments[account];
+  let deploymentId = config.accounts[account]?.webAppDeploymentId;
 
   if (deploymentId) {
     // Redeploy to existing deployment
@@ -106,8 +98,8 @@ function deployToAccount(account) {
     if (deploymentId) {
       console.log(`🔍 Found existing web app deployment: ${deploymentId}`);
       // Save for future use
-      config.deployments[account] = deploymentId;
-      saveDeploymentConfig(config);
+      config.accounts[account].webAppDeploymentId = deploymentId;
+      saveAccountConfig(config);
 
       // Redeploy to it
       execCommand(
@@ -126,8 +118,8 @@ function deployToAccount(account) {
       const deployMatch = deployOutput.match(/Created deployment (.+)/);
       if (deployMatch) {
         deploymentId = deployMatch[1].trim();
-        config.deployments[account] = deploymentId;
-        saveDeploymentConfig(config);
+        config.accounts[account].webAppDeploymentId = deploymentId;
+        saveAccountConfig(config);
         console.log(`💾 Saved deployment ID: ${deploymentId}`);
       }
     }
@@ -173,8 +165,8 @@ function main() {
     console.log('\nAvailable accounts:');
 
     try {
-      const accounts = getAccountConfig();
-      Object.keys(accounts.accounts).forEach(acc => {
+      const config = getAccountConfig();
+      Object.keys(config.accounts).forEach(acc => {
         console.log(`  - ${acc}`);
       });
     } catch (error) {
@@ -185,8 +177,8 @@ function main() {
 
   try {
     if (account === 'all') {
-      const accounts = getAccountConfig();
-      for (const acc of Object.keys(accounts.accounts)) {
+      const config = getAccountConfig();
+      for (const acc of Object.keys(config.accounts)) {
         deployToAccount(acc);
       }
     } else {
