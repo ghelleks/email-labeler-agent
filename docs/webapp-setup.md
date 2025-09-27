@@ -13,49 +13,70 @@ Before deploying the web app, ensure you have:
 
 ## Deployment Steps
 
-### Step 1: Upload Latest Code
+### Option A: Automated Deployment (Recommended)
 
-1. **Navigate to your project directory**:
-   ```bash
-   cd /path/to/your/email-agent
-   ```
+**Navigate to your project directory**:
+```bash
+cd /path/to/your/email-agent
+```
 
-2. **Push the latest code to Apps Script**:
+**Deploy the web app with one command**:
+```bash
+npm run deploy:webapp
+```
+
+This automated command will:
+1. Upload your latest code to Apps Script
+2. Create a new web app deployment
+3. **Automatically display your web app URL** for bookmarking
+4. Show next steps and usage instructions
+
+**Copy the web app URL** from the command output and bookmark it.
+
+### Option B: Manual Deployment (Alternative)
+
+If you prefer manual control or the automated deployment doesn't work:
+
+1. **Upload the latest code**:
    ```bash
    npm run push
    ```
 
-3. **Verify files are uploaded**:
+2. **Open the Apps Script editor**:
    ```bash
    npm run open
    ```
-   - Check that you see `WebApp.html` and `WebAppController.gs` in the file list
+   - Verify you see `WebApp.html` and `WebAppController.gs` in the file list
 
-### Step 2: Deploy as Web App
-
-1. **In the Apps Script editor**, click the **"Deploy"** button (top right)
-
-2. **Click "New deployment"**
-
-3. **Configure deployment settings**:
+3. **Deploy manually**:
+   - Click the **"Deploy"** button (top right)
+   - Click **"New deployment"**
    - **Type**: Select **"Web app"** from the dropdown
    - **Description**: "Email Agent Dashboard" (or your preferred name)
    - **Execute as**: **"Me"** (your email address)
    - **Who has access**: **"Only myself"**
+   - Click **"Deploy"**
 
-4. **Click "Deploy"**
-
-5. **Authorize the deployment**:
+4. **Authorize the deployment**:
    - Click **"Authorize access"**
    - Choose your Google account
    - Click **"Advanced"** → **"Go to [Your Project Name] (unsafe)"**
    - Click **"Allow"**
 
-6. **Copy the web app URL**:
+5. **Copy the web app URL**:
    - The deployment will show a URL like: `https://script.google.com/macros/s/AKfyc...../exec`
    - **Copy this URL** - you'll need it to access your dashboard
 
-### Step 3: Test the Deployment
+### Getting Your Web App URL Later
+
+If you need to find your web app URL again:
+```bash
+npm run webapp:url
+```
+
+This command will display your current web app URL and setup instructions.
+
+## Testing the Deployment
 
 1. **Open the web app URL** in a new browser tab
 
@@ -68,7 +89,7 @@ Before deploying the web app, ensure you have:
    - You should see "Ready to process emails" message
    - Both buttons should be visible and responsive
 
-### Step 4: Configure for Production Use
+## Configure for Production Use
 
 #### Set Web App Configuration (Optional)
 
@@ -87,7 +108,7 @@ Ensure these settings are properly configured:
 - **Execute as**: "Me" (ensures proper Gmail access)
 - **Project visibility**: Keep private (don't share the project)
 
-### Step 5: Create Bookmark (Mobile-Friendly)
+## Create Bookmark (Mobile-Friendly)
 
 #### For iOS (iPhone/iPad):
 1. Open the web app URL in Safari
@@ -276,9 +297,11 @@ When reporting issues, include:
 
 ### Key Commands
 ```bash
-npm run push     # Upload code changes
-npm run open     # Open Apps Script editor
-npm run logs     # View execution logs
+npm run deploy:webapp # Deploy web app and get URL (recommended)
+npm run webapp:url    # Get current web app URL anytime
+npm run push          # Upload code changes
+npm run open          # Open Apps Script editor
+npm run logs          # View execution logs
 ```
 
 ### Mobile Shortcuts

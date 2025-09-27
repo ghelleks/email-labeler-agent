@@ -274,11 +274,28 @@ In addition to automatic email labeling, this system includes an **Interactive W
 
 For detailed web app setup instructions, see [docs/webapp-setup.md](docs/webapp-setup.md).
 
-**Quick Setup**:
+**Quick Setup (Automated)**:
+```bash
+npm run deploy:webapp
+```
+
+This command will:
+1. Upload your latest code to Apps Script
+2. Create a new web app deployment
+3. **Automatically display your web app URL** for bookmarking
+
+**Manual Setup Alternative**:
 1. In the Apps Script editor, click "Deploy" → "New deployment"
 2. Choose type: "Web app", Execute as: "Me", Access: "Only myself"
 3. Click "Deploy" and copy the web app URL
 4. Bookmark the URL for easy access
+
+**Getting Your Web App URL Anytime**:
+```bash
+npm run webapp:url
+```
+
+This command shows your current web app URL and setup instructions.
 
 #### How to Use the Web App
 
@@ -351,8 +368,9 @@ npm run status        # Check sync status between local and remote
 
 ### Deployment Commands
 ```bash
-npm run deploy        # Create stable version and deploy
+npm run deploy        # Create stable version and deploy (includes web app URL)
 npm run deploy:full   # Deploy and reinstall triggers (recommended for major updates)
+npm run deploy:webapp # Deploy web app and get URL (for web app setup)
 npm run version:stable # Create timestamped stable version
 ```
 
@@ -419,6 +437,13 @@ All settings are optional and have sensible defaults:
 
 ## Updating and Deploying the Script
 
+### Understanding Deployment Types
+
+There are two types of deployments in this system:
+
+1. **Code Deployment**: Uploads your code to Apps Script (for automatic email labeling)
+2. **Web App Deployment**: Makes the web dashboard accessible via URL
+
 ### Development Updates
 
 For simple code changes during development:
@@ -427,13 +452,13 @@ For simple code changes during development:
 npm run push
 ```
 
-This uploads any code changes to your Apps Script project.
+This uploads any code changes to your Apps Script project but doesn't create deployments.
 
 ### Production Deployments
 
 For significant updates (like model changes or new features), use the proper deployment workflow:
 
-#### Quick Deployment
+#### Code Deployment with Web App URL
 ```bash
 npm run deploy
 ```
@@ -441,7 +466,8 @@ npm run deploy
 This command:
 1. Creates a timestamped stable version (e.g., `stable-20241127-143052`)
 2. Deploys that version as a new deployment
-3. Provides a stable rollback point if needed
+3. **Automatically displays your web app URL** for easy access
+4. Provides a stable rollback point if needed
 
 #### Full Deployment with Trigger Reset
 ```bash
@@ -452,6 +478,17 @@ This command:
 1. Runs the complete deployment process
 2. Reinstalls the hourly trigger to ensure it uses the new deployment
 3. **Use this when**: Updating AI models, changing trigger behavior, or major functionality changes
+
+#### Web App Only Deployment
+```bash
+npm run deploy:webapp
+```
+
+This command:
+1. Uploads current code
+2. Creates a web app deployment
+3. **Shows your web app URL immediately**
+4. Perfect for initial web app setup or web app updates
 
 **Why use deployment commands?** They create stable versions with timestamps, making it easy to track changes and rollback if something goes wrong. This is especially important when updating AI models or core functionality.
 
@@ -477,8 +514,10 @@ npm run version          # Creates a version with custom description
 | Scenario | Command | Why |
 |----------|---------|-----|
 | Quick bug fix or minor tweak | `npm run push` | Fast, works for development |
-| New feature or configuration change | `npm run deploy` | Creates stable version for rollback |
+| New feature or configuration change | `npm run deploy` | Creates stable version for rollback + shows web app URL |
 | AI model update or trigger changes | `npm run deploy:full` | Ensures triggers use new deployment |
+| Setting up web app for first time | `npm run deploy:webapp` | Quick web app deployment with immediate URL |
+| Getting web app URL after setup | `npm run webapp:url` | Shows current web app URL and instructions |
 | Testing new changes | `npm run push` + manual testing | Safe development workflow |
 
 ### Example: Updating AI Model

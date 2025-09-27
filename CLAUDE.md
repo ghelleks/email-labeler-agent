@@ -36,20 +36,24 @@ npm run trigger:delete    # Remove all existing triggers
 ```bash
 npm run version           # Create a new version (manual)
 npm run version:stable    # Create timestamped stable version
-npm run deploy            # Create version + deploy with description
+npm run deploy            # Create version + deploy with description (includes web app URL)
 npm run deploy:full       # Complete workflow: version + deploy + update triggers
+npm run deploy:webapp     # Deploy web app and display URL immediately
+npm run webapp:url        # Get current web app URL anytime
 ```
 
 ## Architecture Overview
 
 ### Core Components
-- **Main.gs**: Entry point that orchestrates the email processing pipeline
+- **Main.gs**: Entry point that orchestrates the email processing pipeline + web app URL utilities
 - **Organizer.gs**: Applies categorization results and manages Gmail labels
 - **LLMService.gs**: Handles Gemini AI integration with dual authentication (API key or Vertex AI)
 - **Agents.gs**: Pluggable agent system for extensible email processing
 - **GmailService.gs**: Gmail API operations and thread management
 - **Config.gs**: Configuration management using Apps Script Properties
 - **RuleDocService.gs**: Integration with Google Drive for classification rules
+- **WebAppController.gs**: Web app entry point and API orchestration for interactive dashboard
+- **WebApp.html**: Mobile-optimized HTML interface for on-demand email summarization
 
 ### Data Flow
 1. `findUnprocessed_()` identifies unlabeled email threads
@@ -60,6 +64,8 @@ npm run deploy:full       # Complete workflow: version + deploy + update trigger
 
 ### Configuration System
 Configuration uses Apps Script Script Properties accessible via the Apps Script editor:
+
+#### Core Email Processing
 - `GEMINI_API_KEY`: Gemini API authentication (API key mode)
 - `PROJECT_ID`: Google Cloud project for Vertex AI (Vertex mode)
 - `DRY_RUN`: Test mode that analyzes without applying labels
@@ -67,6 +73,10 @@ Configuration uses Apps Script Script Properties accessible via the Apps Script 
 - `MAX_EMAILS_PER_RUN`: Limits emails processed per execution (default: 20)
 - `BATCH_SIZE`: Number of emails sent to AI in one request (default: 10)
 - `DAILY_GEMINI_BUDGET`: Daily API call limit (default: 50)
+
+#### Web App Configuration
+- `WEBAPP_ENABLED`: Enable/disable web app functionality (default: true)
+- `WEBAPP_MAX_EMAILS_PER_SUMMARY`: Maximum emails to process in web app per summary (default: 25)
 
 ## Development Patterns
 

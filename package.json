@@ -13,8 +13,10 @@
     "open:logs": "clasp open-logs",
     "version": "clasp version",
     "version:stable": "clasp version \"stable-$(date +%Y%m%d-%H%M%S)\"",
-    "deploy": "npm run version:stable && clasp deploy --description \"Production deployment $(date)\"",
+    "deploy": "npm run version:stable && clasp deploy --description \"Production deployment $(date)\" && npm run webapp:url",
     "deploy:full": "npm run deploy && npm run trigger:install",
+    "deploy:webapp": "npm run push && echo \"\\n🚀 Deploying web app...\\n\" && clasp deploy --description \"Web app deployment $(date)\" && npm run webapp:url",
+    "webapp:url": "echo \"\\n📱 Getting web app URL...\\n\" && clasp run getWebAppUrl",
     "trigger:install": "clasp run installTrigger",
     "trigger:delete": "clasp run deleteExistingTriggers_"
   },
