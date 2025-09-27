@@ -69,28 +69,34 @@ function summarizeEmails() {
     const emailIds = emailsToProcess.map(email => email.id);
     PropertiesService.getScriptProperties().setProperty('WEBAPP_PENDING_ARCHIVE_IDS', JSON.stringify(emailIds));
 
-    // Phase 2: Return Gmail data with placeholder summary (AI integration comes in Phase 3)
-    let summaryText = `**Phase 2 Complete**: Found **${emailsToProcess.length} emails** with "summarize" label.\n\n`;
-
-    // Show email previews
-    summaryText += '**Email Previews:**\n';
-    emailsToProcess.forEach(function(email, index) {
-      summaryText += `\n**${index + 1}. ${email.subject}**\n`;
-      summaryText += `From: ${email.from}\n`;
-      summaryText += `Preview: ${email.body.substring(0, 100)}...\n`;
+    // Phase 3: Generate consolidated AI summary using LLMService
+    const summaryResult = generateConsolidatedSummary_(emailsToProcess, {
+      style: 'economist',
+      includeWebLinks: webLinks,
+      emailLinks: emailLinks
     });
 
-    if (webLinks.length > 0) {
-      summaryText += `\n**Web Links Found:** ${webLinks.length}\n`;
-      webLinks.slice(0, 3).forEach(function(link) {
-        summaryText += `• ${link}\n`;
-      });
-      if (webLinks.length > 3) {
-        summaryText += `• ... and ${webLinks.length - 3} more\n`;
-      }
+    if (!summaryResult.success) {
+      return summaryResult;
     }
 
-    summaryText += '\n**Next Phase:** AI summarization will replace this preview with a consolidated summary.';
+    let summaryText = summaryResult.summary;
+
+    // Add source email links at the end of the summary
+    if (emailLinks.length > 0) {
+      summaryText += '\n\n**Source Emails:**\n';
+      emailLinks.forEach(function(link, index) {
+        summaryText += `• [${link.subject}](${link.url})\n`;
+      });
+    }
+
+    // Add web links if found and not already included in summary
+    if (webLinks.length > 0) {
+      summaryText += '\n**Referenced Links:**\n';
+      webLinks.forEach(function(url) {
+        summaryText += `• ${url}\n`;
+      });
+    }
 
     return {
       success: true,
