@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Email Agent Dashboard</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+
+    .header {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+
+    .header h1 {
+      margin: 0 0 8px 0;
+      color: #1a73e8;
+      font-size: 28px;
+      font-weight: 500;
+    }
+
+    .header p {
+      margin: 0;
+      color: #666;
+      font-size: 16px;
+    }
+
+    .main-content {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .action-section {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #e8eaed;
+    }
+
+    .btn {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-right: 12px;
+    }
+
+    .btn:hover {
+      background: #1557b0;
+    }
+
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #ea4335;
+    }
+
+    .btn-secondary:hover {
+      background: #d23125;
+    }
+
+    .status {
+      margin: 16px 0;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+
+    .status.loading {
+      background: #e8f0fe;
+      color: #1a73e8;
+      border: 1px solid #dadce0;
+    }
+
+    .status.success {
+      background: #e6f4ea;
+      color: #137333;
+      border: 1px solid #ceead6;
+    }
+
+    .status.error {
+      background: #fce8e6;
+      color: #d93025;
+      border: 1px solid #f8d7da;
+    }
+
+    .summary-section {
+      margin-top: 24px;
+    }
+
+    .summary-content {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 6px;
+      border-left: 4px solid #1a73e8;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .email-links {
+      margin-top: 16px;
+      padding: 16px;
+      background: #f1f3f4;
+      border-radius: 6px;
+    }
+
+    .email-links h4 {
+      margin: 0 0 12px 0;
+      color: #333;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .email-link {
+      display: block;
+      color: #1a73e8;
+      text-decoration: none;
+      padding: 4px 0;
+      font-size: 14px;
+    }
+
+    .email-link:hover {
+      text-decoration: underline;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ccc;
+      border-radius: 50%;
+      border-top-color: #1a73e8;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .stats {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      flex: 1;
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 28px;
+      font-weight: 600;
+      color: #1a73e8;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: #666;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Email Agent Dashboard</h1>
+    <p>On-demand email summarization and archiving for emails labeled "summarize"</p>
+  </div>
+
+  <div class="main-content">
+    <div class="action-section">
+      <button id="fetchBtn" class="btn" onclick="fetchAndSummarize()">
+        <span id="fetchBtnText">Fetch & Summarize</span>
+      </button>
+
+      <button id="archiveBtn" class="btn btn-secondary hidden" onclick="archiveAll()">
+        Archive All
+      </button>
+
+      <div id="status" class="status hidden"></div>
+    </div>
+
+    <div id="statsSection" class="stats hidden">
+      <div class="stat-card">
+        <div id="emailCount" class="stat-number">0</div>
+        <p class="stat-label">Emails Found</p>
+      </div>
+      <div class="stat-card">
+        <div id="lastUpdated" class="stat-number">—</div>
+        <p class="stat-label">Last Updated</p>
+      </div>
+    </div>
+
+    <div id="summarySection" class="summary-section hidden">
+      <h3>Consolidated Summary</h3>
+      <div id="summaryContent" class="summary-content"></div>
+
+      <div id="emailLinks" class="email-links hidden">
+        <h4>Source Emails:</h4>
+        <div id="emailLinksContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentEmails = [];
+
+    function showStatus(message, type = 'loading') {
+      const status = document.getElementById('status');
+      const spinner = type === 'loading' ? '<span class="loading-spinner"></span>' : '';
+      status.innerHTML = spinner + message;
+      status.className = `status ${type}`;
+      status.classList.remove('hidden');
+    }
+
+    function hideStatus() {
+      document.getElementById('status').classList.add('hidden');
+    }
+
+    function updateStats(emailCount) {
+      document.getElementById('emailCount').textContent = emailCount;
+      document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+      document.getElementById('statsSection').classList.remove('hidden');
+    }
+
+    function displaySummary(summaryData) {
+      const summaryContent = document.getElementById('summaryContent');
+      const emailLinksContainer = document.getElementById('emailLinksContainer');
+
+      // Display the AI-generated summary
+      summaryContent.innerHTML = summaryData.summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+      // Display links to source emails
+      emailLinksContainer.innerHTML = '';
+      summaryData.emailLinks.forEach(function(email) {
+        const link = document.createElement('a');
+        link.href = email.url;
+        link.className = 'email-link';
+        link.target = '_blank';
+        link.textContent = email.subject;
+        emailLinksContainer.appendChild(link);
+      });
+
+      document.getElementById('summarySection').classList.remove('hidden');
+      document.getElementById('emailLinks').classList.remove('hidden');
+      document.getElementById('archiveBtn').classList.remove('hidden');
+    }
+
+    function clearSummary() {
+      document.getElementById('summarySection').classList.add('hidden');
+      document.getElementById('archiveBtn').classList.add('hidden');
+      document.getElementById('statsSection').classList.add('hidden');
+    }
+
+    function setButtonState(disabled, text) {
+      const btn = document.getElementById('fetchBtn');
+      const btnText = document.getElementById('fetchBtnText');
+      btn.disabled = disabled;
+      btnText.textContent = text;
+    }
+
+    function fetchAndSummarize() {
+      clearSummary();
+      setButtonState(true, 'Fetching...');
+      showStatus('Scanning Gmail for emails labeled "summarize"...', 'loading');
+
+      google.script.run
+        .withSuccessHandler(function(response) {
+          if (!response.success) {
+            showStatus('Error: ' + response.error, 'error');
+            setButtonState(false, 'Fetch & Summarize');
+            return;
+          }
+
+          if (response.emails.length === 0) {
+            showStatus('No emails found with "summarize" label', 'success');
+            setButtonState(false, 'Fetch & Summarize');
+            return;
+          }
+
+          currentEmails = response.emails;
+          updateStats(response.count);
+          showStatus('Found ' + response.count + ' emails. Generating consolidated summary...', 'loading');
+
+          // Now generate the summary
+          google.script.run
+            .withSuccessHandler(function(summaryResponse) {
+              setButtonState(false, 'Fetch & Summarize');
+
+              if (!summaryResponse.success) {
+                showStatus('Error generating summary: ' + summaryResponse.error, 'error');
+                return;
+              }
+
+              showStatus('Summary generated successfully!', 'success');
+              displaySummary(summaryResponse);
+            })
+            .withFailureHandler(function(error) {
+              setButtonState(false, 'Fetch & Summarize');
+              showStatus('Failed to generate summary: ' + error.toString(), 'error');
+            })
+            .generateConsolidatedSummary(currentEmails);
+        })
+        .withFailureHandler(function(error) {
+          setButtonState(false, 'Fetch & Summarize');
+          showStatus('Failed to fetch emails: ' + error.toString(), 'error');
+        })
+        .getSummarizeEmails();
+    }
+
+    function archiveAll() {
+      if (currentEmails.length === 0) {
+        showStatus('No emails to archive', 'error');
+        return;
+      }
+
+      const archiveBtn = document.getElementById('archiveBtn');
+      archiveBtn.disabled = true;
+      archiveBtn.textContent = 'Archiving...';
+
+      showStatus('Archiving ' + currentEmails.length + ' emails...', 'loading');
+
+      google.script.run
+        .withSuccessHandler(function(response) {
+          archiveBtn.disabled = false;
+          archiveBtn.textContent = 'Archive All';
+
+          if (!response.success) {
+            showStatus('Error archiving: ' + response.error, 'error');
+            return;
+          }
+
+          showStatus(response.message, 'success');
+          clearSummary();
+          currentEmails = [];
+
+          // Auto-hide success message after 3 seconds
+          setTimeout(hideStatus, 3000);
+        })
+        .withFailureHandler(function(error) {
+          archiveBtn.disabled = false;
+          archiveBtn.textContent = 'Archive All';
+          showStatus('Failed to archive emails: ' + error.toString(), 'error');
+        })
+        .archiveAllSummarizeEmails();
+    }
+
+    // Initialize the interface
+    document.addEventListener('DOMContentLoaded', function() {
+      showStatus('Ready to fetch and summarize emails', 'success');
+      setTimeout(hideStatus, 2000);
+    });
+  </script>
+</body>
+</html>
