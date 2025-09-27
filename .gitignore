@@ -1,6 +1,9 @@
 # Clasp configuration (contains project-specific script ID)
 .clasp.json*
 
+# Multi-account configuration (contains script IDs)
+accounts.json
+
 # Node modules (if any)
 node_modules/
 

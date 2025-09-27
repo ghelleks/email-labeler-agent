@@ -11,51 +11,106 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Essential clasp Commands
+### Account Setup and Management
 ```bash
-npm run push              # Upload local code changes to Apps Script
-npm run pull              # Download changes from Apps Script to local
-npm run open              # Open the Apps Script editor in browser
-npm run status            # Check sync status between local and remote
+# Initial Setup
+npm run setup:account               # Interactive account configuration wizard
+npm run switch:create-project-files  # Create project files for all accounts
+npm run validate:accounts           # Validate account configuration
+npm run auth:help                   # Show authentication guidance
+
+# Status and Information
+npm run switch:status               # Show all account statuses
 ```
 
-### Testing and Execution
+### Account-Specific Operations
 ```bash
-npm run logs              # Watch live execution logs from Apps Script
-npm run open:logs         # Open Apps Script logs in browser
-npm run open              # Open Apps Script editor for manual execution
+# Push Code
+npm run push:personal               # Push code to personal account
+npm run push:work                   # Push code to work account
+
+# Deploy (Push + Deploy)
+npm run deploy:personal             # Push + deploy to personal account
+npm run deploy:work                 # Push + deploy to work account
+
+# Complete Deployment (Push + Deploy + Trigger Setup)
+npm run deploy:personal:all         # Complete deployment to personal account
+npm run deploy:work:all             # Complete deployment to work account
+
+# Monitoring and Logs
+npm run logs:personal               # View execution logs from personal account
+npm run logs:work                   # View execution logs from work account
+npm run status:personal             # Check status of personal account
+npm run status:work                 # Check status of work account
+
+# Apps Script Editor Access
+npm run open:personal               # Open Apps Script editor for personal account
+npm run open:work                   # Open Apps Script editor for work account
+
+# Web App URL Retrieval
+npm run url:personal                # Get web app URL for personal account
+npm run url:work                    # Get web app URL for work account
+npm run url:all                     # Get web app URLs for all accounts
 ```
 
-### Trigger Management
+### Multi-Account Operations
 ```bash
-npm run trigger:install   # Install hourly email processing trigger
-npm run trigger:delete    # Remove all existing triggers
-npm run trigger:list      # List currently installed triggers
+# Batch Operations (All Accounts)
+npm run status:all                  # Show status for all configured accounts
+npm run deploy:all-accounts         # Deploy to all configured accounts
+npm run push:all-accounts           # Push to all configured accounts
 ```
 
-### Deployment
-```bash
-# Core Deployment Scripts
-npm run deploy            # Basic versioned deployment
-npm run deploy:triggers   # Deploy with email processing triggers
-npm run deploy:webapp     # Deploy web app only
-npm run deploy:all        # 🚀 RECOMMENDED: Deploy everything (webapp + triggers)
+### Account Setup Process
 
-# Web App Utilities
-npm run webapp:url                   # Get current web app URL
-npm run webapp:open                  # Open Apps Script for manual URL access
-npm run webapp:deploy-and-open       # Deploy webapp + open for URL retrieval
+#### First-Time Setup
+1. **Account Configuration**: Run `npm run setup:account` to configure accounts
+2. **Authentication**: Log into each account with `clasp --user [account] login`
+3. **Project Files**: Run `npm run switch:create-project-files` to create clasp project files
+4. **Validation**: Run `npm run validate:accounts` to verify setup
+5. **Deploy**: Use `npm run deploy:[account]:all` for complete deployment
 
-# Version Management
-npm run version           # Create a new version (manual)
-npm run version:stable    # Create timestamped stable version
+#### Account Configuration Format
+The system uses `accounts.json` to manage multiple Google Apps Script deployments:
+```json
+{
+  "defaultAccount": "work",
+  "accounts": {
+    "work": {
+      "scriptId": "1Yyl2UjvQOBKxT1J6OXPzR0q5bpRBdLuE7MUgTuVdV7uUtdltIxQyQBK-",
+      "description": "Red Hat"
+    },
+    "personal": {
+      "scriptId": "1JvaGS8HDHIJoebhjY_2bQjUx0Tx2XVyHSJkaA5gV7_MEUWBixuRsHPno",
+      "description": "Personal Gmail Account"
+    }
+  }
+}
 ```
+
+#### Authentication Requirements
+Each account requires separate authentication:
+```bash
+clasp --user personal login    # Log into personal account
+clasp --user work login        # Log into work account
+```
+
+#### Trigger Installation
+**Important**: Automated trigger installation via `clasp run` is unreliable due to permission issues. Triggers must be installed manually:
+
+1. Use `npm run open:personal` or `npm run open:work` to open Apps Script editor
+2. Select `installTrigger` from the function dropdown
+3. Click the Run button to install triggers
+4. Grant necessary permissions when prompted
+
+The `deploy:[account]:all` commands attempt automated trigger installation but may fail on the `clasp run` portion.
 
 #### Deployment Strategy Guide
-- **First-time setup**: Use `npm run deploy:all` for complete system setup
-- **Web app only updates**: Use `npm run deploy:webapp` for quick web interface testing
-- **Email processing only**: Use `npm run deploy:triggers` for backend-only updates
-- **Production updates**: Use `npm run deploy:all` to update both components simultaneously
+- **First-time setup**: Use `npm run deploy:[account]:all` for complete system setup
+- **Code updates**: Use `npm run deploy:[account]` for code deployment only
+- **Quick testing**: Use `npm run push:[account]` to push code without deployment
+- **Production updates**: Use `npm run deploy:[account]:all` and manually verify triggers
+- **Multiple accounts**: Use `npm run deploy:all-accounts` for batch deployment
 
 ## Architecture Overview
 
@@ -133,12 +188,12 @@ Refer to `docs/adr/` for complete context:
 ## Testing and Debugging
 
 ### Local Development
-- Use `npm run push` after any code changes
+- Use `npm run push:[account]` after any code changes
 - Enable `DEBUG=true` in Script Properties for verbose logging
 - Use `DRY_RUN=true` to test classification without applying labels
 
 ### Monitoring
-- Check execution logs via `npm run logs` or Apps Script editor
+- Check execution logs via `npm run logs:[account]` or Apps Script editor
 - Monitor daily budget usage to prevent quota overruns
 - Verify label application in Gmail after test runs
 
@@ -147,4 +202,34 @@ Refer to `docs/adr/` for complete context:
 2. Verify Gemini API key or Google Cloud project permissions
 3. Review execution logs for detailed error messages
 4. Test with small `MAX_EMAILS_PER_RUN` values during development
+
+### Multi-Account Troubleshooting
+
+**🔍 Problem**: `accounts.json not found` error
+- **Solution**: Run `npm run setup:account` to create initial configuration
+- **Solution**: Ensure you're running commands from the project root directory
+
+**🔍 Problem**: `Invalid script ID` error
+- **Solution**: Verify Script IDs in `accounts.json` are correct (57+ characters)
+- **Solution**: Get Script ID from Apps Script editor URL: `script.google.com/.../{SCRIPT_ID}/edit`
+
+**🔍 Problem**: `clasp login` required for specific account
+- **Solution**: Each Google account needs separate authentication: `clasp --user [account] login`
+- **Solution**: Use `clasp --user [account] login --no-localhost` if having browser issues
+
+**🔍 Problem**: `.clasp.json.[account]` file not found
+- **Solution**: Run `npm run switch:create-project-files` to create project files
+- **Solution**: Ensure account name in `accounts.json` matches the file suffix
+
+**🔍 Problem**: Trigger installation fails
+- **Solution**: Install triggers manually in Apps Script editor using `installTrigger` function
+- **Solution**: Automated `clasp run` trigger installation is unreliable due to permissions
+
+**🔍 Problem**: Multi-account commands not working
+- **Solution**: Ensure you have the latest `package.json` with multi-account scripts
+- **Solution**: Validate setup with `npm run validate:accounts`
+
+**🔍 Problem**: Authentication issues with specific account
+- **Solution**: Check authentication status with `npm run switch:status`
+- **Solution**: Re-authenticate problematic account: `clasp --user [account] login`
 - This project doesn't require test functions that are not part of the regular execution.

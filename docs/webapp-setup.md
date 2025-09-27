@@ -13,37 +13,61 @@ Before deploying the web app, ensure you have:
 
 ## Deployment Steps
 
-### Option A: Automated Deployment (Recommended)
+### Option A: Multi-Account Deployment (Recommended)
 
 **Navigate to your project directory**:
 ```bash
 cd /path/to/your/email-agent
 ```
 
-**Deploy the web app with one command**:
+**Deploy the web app for specific account**:
 ```bash
-npm run deploy:webapp
+# For personal account
+npm run deploy:personal:all
+
+# For work account
+npm run deploy:work:all
+
+# For all configured accounts
+npm run deploy:all-accounts
 ```
 
-This automated command will:
-1. Upload your latest code to Apps Script
-2. Create a new web app deployment
-3. **Automatically display your web app URL** for bookmarking
-4. Show next steps and usage instructions
+These commands will:
+1. Upload your latest code to the specified Apps Script project
+2. Create/update deployment with web app enabled
+3. Attempt to install triggers (may require manual installation)
+4. Show deployment status and next steps
 
-**Copy the web app URL** from the command output and bookmark it.
+**Note**: Web app URLs must be retrieved manually from the Apps Script editor due to clasp limitations.
 
-### Option B: Manual Deployment (Alternative)
+### Option B: Legacy Single Account Deployment
+
+For existing single-account setups:
+```bash
+npm run deploy:webapp  # May not be available in current setup
+```
+
+### Option C: Manual Deployment (Always Available)
 
 If you prefer manual control or the automated deployment doesn't work:
 
 1. **Upload the latest code**:
    ```bash
+   # For specific account
+   npm run push:personal
+   npm run push:work
+
+   # For legacy single account setup
    npm run push
    ```
 
 2. **Open the Apps Script editor**:
    ```bash
+   # For specific account
+   npm run open:personal
+   npm run open:work
+
+   # For legacy single account setup
    npm run open
    ```
    - Verify you see `WebApp.html` and `WebAppController.gs` in the file list
@@ -67,14 +91,24 @@ If you prefer manual control or the automated deployment doesn't work:
    - The deployment will show a URL like: `https://script.google.com/macros/s/AKfyc...../exec`
    - **Copy this URL** - you'll need it to access your dashboard
 
-### Getting Your Web App URL Later
+### Getting Your Web App URL
 
-If you need to find your web app URL again:
+**Important**: Due to clasp limitations, web app URLs must be retrieved manually:
+
+1. **Open the Apps Script editor**:
+   ```bash
+   npm run open:personal  # or npm run open:work
+   ```
+
+2. **Get the web app URL**:
+   - Click **"Deploy"** → **"Manage deployments"**
+   - Copy the web app URL from the active deployment
+   - Bookmark this URL for quick access
+
+**Legacy command** (may not work with multi-account setup):
 ```bash
-npm run webapp:url
+npm run webapp:url  # Only works with legacy single-account setup
 ```
-
-This command will display your current web app URL and setup instructions.
 
 ## Testing the Deployment
 
@@ -296,13 +330,33 @@ When reporting issues, include:
 - **Google Cloud Console**: [console.cloud.google.com](https://console.cloud.google.com)
 
 ### Key Commands
+
+#### Multi-Account Commands (Current System)
 ```bash
-npm run deploy:webapp # Deploy web app and get URL (recommended)
-npm run deploy:all    # Deploy complete system (webapp + triggers)
-npm run webapp:url    # Get current web app URL anytime
-npm run push          # Upload code changes
-npm run open          # Open Apps Script editor
-npm run logs          # View execution logs
+# Complete deployment (recommended)
+npm run deploy:personal:all  # Deploy everything to personal account
+npm run deploy:work:all      # Deploy everything to work account
+npm run deploy:all-accounts  # Deploy to all configured accounts
+
+# Development workflow
+npm run push:personal        # Upload code to personal account
+npm run push:work           # Upload code to work account
+npm run open:personal       # Open personal Apps Script editor
+npm run open:work          # Open work Apps Script editor
+npm run logs:personal      # View personal account logs
+npm run logs:work         # View work account logs
+
+# Account management
+npm run switch:status      # Show all account statuses
+npm run validate:accounts  # Validate account configuration
+```
+
+#### Legacy Single Account Commands
+```bash
+npm run deploy:all    # Deploy complete system (if using legacy setup)
+npm run push          # Upload code changes (legacy)
+npm run open          # Open Apps Script editor (legacy)
+npm run logs          # View execution logs (legacy)
 ```
 
 ### Mobile Shortcuts

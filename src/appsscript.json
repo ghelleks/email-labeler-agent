@@ -4,15 +4,14 @@
   },
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
-  "webapp": {
-    "access": "MYSELF",
-    "executeAs": "USER_DEPLOYING"
+  "executionApi": {
+    "access": "MYSELF"
   },
   "oauthScopes": [
     "https://www.googleapis.com/auth/gmail.modify",
-    "https://www.googleapis.com/auth/gmail.labels",
     "https://www.googleapis.com/auth/drive.readonly",
     "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.scriptapp",
     "https://www.googleapis.com/auth/userinfo.email"
   ]
 }

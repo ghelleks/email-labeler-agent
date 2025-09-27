@@ -43,10 +43,32 @@ function installTrigger() {
   ScriptApp.newTrigger('run').timeBased().everyHours(1).create();
 }
 
+function deleteTriggers() {
+  deleteExistingTriggers_();
+  console.log('All email processing triggers deleted');
+}
+
+function listTriggers() {
+  const triggers = ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'run');
+
+  if (triggers.length === 0) {
+    console.log('No email processing triggers installed');
+    return;
+  }
+
+  console.log(`Found ${triggers.length} email processing trigger(s):`);
+  triggers.forEach((trigger, index) => {
+    const source = trigger.getTriggerSource();
+    const eventType = trigger.getEventType();
+    console.log(`  ${index + 1}. ${source} - ${eventType}`);
+  });
+}
+
 function deleteExistingTriggers_() {
   ScriptApp.getProjectTriggers()
     .filter(t => t.getHandlerFunction() === 'run')
-    .forEach(ScriptApp.deleteTrigger);
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
 }
 
 /**

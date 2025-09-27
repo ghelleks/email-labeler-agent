@@ -1,60 +1,76 @@
-# ADR-009: Deployment Automation and Versioning Patterns
+# ADR-009: Deployment Automation and Multi-Account Management
 
-**Status**: Accepted
-**Date**: 2025-01-27
+**Status**: Accepted (Updated for Multi-Account Support)
+**Date**: 2025-01-27 (Updated: 2025-01-27)
 **Deciders**: Project team
 
 ## Context
 
-The email-agent Google Apps Script project required a safe and reliable deployment process with proper version control. Several issues were identified with the original deployment approach:
+The email-agent Google Apps Script project evolved from a single-account system to a multi-account deployment system to support users managing multiple Gmail accounts (personal, work, etc.). This evolution required significant changes to the deployment automation approach.
 
-**Safety Concerns:**
-- Original deployment script deployed directly without creating stable versions first
-- Google Apps Script triggers automatically use the latest deployment
+**Original Single-Account Issues:**
+- Manual deployment steps were error-prone and inconsistent
+- No safe deployment process with proper version control
 - Risk of deploying broken code that would immediately affect production triggers
-- No rollback capability if deployments failed or caused issues
+- Limited ability to manage different configurations across accounts
 
-**Operational Requirements:**
-- Need for automated deployment workflow to reduce manual errors
-- Requirement for timestamped versions for clear version tracking
-- Integration with trigger management for complete deployment cycles
-- Documentation of deployment process for team consistency
+**Multi-Account Requirements:**
+- Support for multiple Google Apps Script projects (one per Gmail account)
+- Account-specific deployment workflows using clasp's native --user and --project flags
+- Consistent configuration and code deployment across all accounts
+- Simplified account switching and validation
+- Batch operations for deploying to multiple accounts simultaneously
 
-**Google Apps Script Constraints:**
-- Triggers always use the latest deployed version (no version-specific targeting)
-- Version creation is separate from deployment in clasp CLI
-- Manual deployment steps are error-prone and inconsistent
-- Need to coordinate version → deploy → trigger update sequence
+**Platform Constraints:**
+- clasp run command for automated trigger installation is unreliable due to permission issues
+- Each Google account requires separate authentication and project management
+- Native clasp multi-account support requires proper project file management
+- Web app URL retrieval through clasp is limited, requiring manual extraction
 
 ## Decision
 
-We implemented an automated deployment workflow with integrated versioning and trigger management:
+We implemented a comprehensive multi-account deployment system using clasp's native --user and --project flags:
 
-**Timestamped Version Naming:**
-- Pattern: `stable-YYYYMMDD-HHMMSS` (e.g., "stable-20250127-143022")
-- Provides clear chronological ordering and human-readable timestamps
-- Differentiates stable versions from development or experimental versions
-- Enables quick identification of deployment timeframes
+**Multi-Account Architecture:**
+- `accounts.json`: Central configuration file containing account profiles with Script IDs and descriptions
+- Account-specific `.clasp.json.[account]` files for each configured account
+- Native clasp command integration using --user and --project flags
+- Validation and setup automation through Node.js scripts
 
-**Automated Deployment Workflow:**
-- `version:stable`: Creates timestamped stable versions using current code state
-- `deploy`: Combines version creation with deployment and descriptive metadata
-- `deploy:all`: Complete workflow including trigger updates for production readiness
-
-**Integrated npm Scripts:**
+**Account Management System:**
 ```json
 {
-  "version:stable": "clasp version \"stable-$(date +%Y%m%d-%H%M%S)\"",
-  "deploy": "npm run version:stable && clasp deploy --description \"Production deployment $(date)\"",
-  "deploy:all": "npm run deploy && npm run trigger:install"
+  "setup:account": "Interactive account configuration wizard",
+  "switch:create-project-files": "Create .clasp.json files for all accounts",
+  "validate:accounts": "Validate account configuration and accessibility",
+  "auth:help": "Authentication guidance for multi-account setup"
 }
 ```
 
-**Safe Deployment Process:**
-1. Create stable version from current code state
-2. Deploy the versioned code with descriptive metadata
-3. Update triggers to use the new deployment
-4. Maintain rollback capability through version history
+**Account-Specific Operations:**
+```json
+{
+  "push:personal": "clasp --user personal --project .clasp.json.personal push",
+  "deploy:personal": "clasp --user personal --project .clasp.json.personal push && deploy",
+  "deploy:personal:all": "push + deploy + trigger installation for personal account",
+  "logs:personal": "clasp --user personal --project .clasp.json.personal logs",
+  "open:personal": "clasp --user personal --project .clasp.json.personal open-script"
+}
+```
+
+**Batch Operations:**
+```json
+{
+  "status:all": "Show status for all configured accounts",
+  "deploy:all-accounts": "Deploy to all accounts with confirmation",
+  "push:all-accounts": "Push code to all accounts simultaneously"
+}
+```
+
+**Trigger Installation Approach:**
+- Manual trigger installation through Apps Script editor (recommended)
+- Automated attempts via clasp run (unreliable due to permissions)
+- Account-specific trigger management per Google account
 
 ## Alternatives Considered
 
@@ -86,37 +102,48 @@ We implemented an automated deployment workflow with integrated versioning and t
 ## Consequences
 
 ### Positive
-- **Safety**: Stable versions created before every deployment ensure rollback capability
-- **Automation**: Reduces manual errors and ensures consistent deployment process
-- **Traceability**: Timestamped versions provide clear deployment history
-- **Integration**: npm scripts work seamlessly with existing clasp workflow
-- **Documentation**: Clear deployment commands documented in package.json
-- **Efficiency**: Single command (`deploy:all`) handles complete deployment cycle
-- **Reliability**: Systematic approach reduces risk of incomplete deployments
+- **Multi-Account Support**: Single codebase can manage multiple Gmail accounts (personal, work, etc.)
+- **Native Integration**: Uses clasp's built-in --user and --project flags for reliable account management
+- **Isolation**: Each account operates independently with separate configurations and permissions
+- **Scalability**: Easy to add new accounts without changing core deployment logic
+- **Batch Operations**: Can deploy to all accounts simultaneously with confirmation prompts
+- **Validation**: Built-in configuration validation prevents common setup errors
+- **Flexibility**: Supports both individual account operations and bulk operations
+- **Backward Compatibility**: Legacy single-account setup continues to work alongside multi-account
 
 ### Negative
-- **Version proliferation**: Automated versioning creates many stable versions over time
-- **Storage overhead**: Each version consumes space in Google Apps Script project
-- **Clock dependency**: Timestamp accuracy depends on system clock settings
-- **Rollback complexity**: While versions enable rollback, process still requires manual intervention
+- **Setup Complexity**: Initial multi-account configuration requires more steps than single account
+- **Authentication Management**: Each account requires separate clasp login authentication
+- **Trigger Installation**: Manual trigger installation required due to clasp run permission issues
+- **URL Retrieval**: Web app URLs must be retrieved manually from Apps Script editor
+- **File Proliferation**: Multiple .clasp.json.[account] files need to be maintained
+- **Documentation Overhead**: More complex command structure requires comprehensive documentation
 
 ### Neutral
-- **Command learning**: Team needs to learn new deployment commands
-- **Process change**: Shift from manual to automated deployment requires workflow adjustment
-- **Monitoring**: Need to occasionally clean up old versions to manage project size
+- **Command Learning**: Users need to learn account-specific command patterns (e.g., `npm run deploy:personal`)
+- **Account Naming**: Requires consistent account naming conventions (lowercase recommended)
+- **Project Management**: Need to track multiple Google Apps Script project IDs
+- **Migration Path**: Existing users can gradually migrate from single-account to multi-account setup
 
 ## Implementation Notes
 
-### Deployment Command Usage
+### Multi-Account Deployment Usage
 ```bash
-# Create timestamped stable version only
-npm run version:stable
+# Initial Setup
+npm run setup:account                # Configure accounts interactively
+npm run switch:create-project-files   # Create clasp project files
+npm run validate:accounts             # Validate configuration
 
-# Create version and deploy (recommended for most cases)
-npm run deploy
+# Account-Specific Deployment
+npm run deploy:personal:all           # Complete deployment to personal account
+npm run deploy:work:all              # Complete deployment to work account
+npm run push:personal                # Push code only to personal account
+npm run logs:personal                # View personal account logs
 
-# Full deployment including trigger updates (for production)
-npm run deploy:all
+# Batch Operations
+npm run deploy:all-accounts           # Deploy to all configured accounts
+npm run status:all                   # Check all account statuses
+npm run push:all-accounts            # Push to all accounts
 ```
 
 ### Version Management Strategy
@@ -132,15 +159,18 @@ npm run deploy:all
 4. Verify system functionality after rollback
 
 ### Trigger Management Integration
-- `deploy:all` automatically updates triggers after deployment
-- Ensures triggers use the newly deployed version
-- Handles trigger deletion and recreation for clean state
-- Use `trigger:install` separately if triggers need updating without deployment
+- `deploy:[account]:all` attempts automated trigger installation but may fail
+- Manual trigger installation through Apps Script editor is recommended
+- Each account requires separate trigger installation
+- Open specific account editor: `npm run open:personal` or `npm run open:work`
+- Select `installTrigger` function and run manually for reliable installation
 
 ### Documentation Updates
-- CLAUDE.md updated with new deployment commands
-- Development workflow documentation includes safe deployment practices
-- Team onboarding includes deployment automation training
+- CLAUDE.md updated with multi-account deployment commands
+- README.md includes comprehensive multi-account setup guide
+- Developer guide updated with multi-account workflow patterns
+- WebApp setup guide updated for account-specific deployment
+- Troubleshooting documentation for multi-account issues
 
 ### Monitoring and Maintenance
 - Monitor Apps Script quotas as version count increases
