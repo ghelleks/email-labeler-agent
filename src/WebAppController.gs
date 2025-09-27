@@ -15,7 +15,7 @@ function doGet(e) {
   if (!userEmail) {
     return HtmlService.createHtmlOutput('<h1>Access Denied</h1><p>Authentication required.</p>')
       .setTitle('Access Denied')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DENY);
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   }
 
   // Security: Log access for audit trail
@@ -23,7 +23,7 @@ function doGet(e) {
 
   return HtmlService.createHtmlOutputFromFile('WebApp')
     .setTitle('Email Agent Dashboard')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DENY); // Prevent embedding in frames
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT); // Prevent embedding in frames
 }
 
 /**
