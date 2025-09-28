@@ -85,20 +85,32 @@ We implemented a pluggable agents architecture that executes after the main emai
 
 ## Implementation Notes
 
-### Agent Interface Standard
+### Agent Architecture Evolution
+
+**Original Pattern (Deprecated):**
 ```javascript
 class EmailAgent {
   constructor(config) { /* initialization */ }
-
-  // Returns true if this agent should process the given email
   shouldProcess(email, label) { /* filtering logic */ }
-
-  // Performs the agent's action on the email
   async process(email, label) { /* main logic */ }
-
-  // Returns unique identifier for state tracking
   getStateKey(email) { /* state management */ }
 }
+```
+
+**Current Pattern (Self-Contained Agents):**
+See ADR-011: Self-Contained Agent Architecture for detailed guidance.
+
+```javascript
+// Self-contained agent structure
+function getAgentConfig_() { /* agent-managed configuration */ }
+function ensureAgentLabels_() { /* agent-managed labels */ }
+function agentHandler(ctx) { /* main processing logic */ }
+function installAgentTrigger() { /* agent-managed scheduling */ }
+
+// Registration following established pattern
+AGENT_MODULES.push(function(api) {
+  api.register('label', 'agentName', agentHandler, options);
+});
 ```
 
 ### State Management
@@ -106,27 +118,56 @@ class EmailAgent {
 - Key format: `agent:${agentName}:${emailId}:${version}`
 - Store execution timestamps and results
 - Implement state cleanup for old entries
+- **New**: Agents manage their own state keys and cleanup logic
 
 ### Budget Integration
 - Agents must respect daily API call limits
 - Track API usage per agent type
 - Implement graceful degradation when budgets are exceeded
 - Priority system for critical vs. optional agents
+- **New**: Agents can define their own budget categories and limits
 
 ### Error Handling
 - Agent failures don't block other agents
 - Comprehensive logging for debugging
 - Retry logic for transient failures
 - Fallback behaviors for critical functionality
+- **New**: Agents handle their own error logging and recovery
 
 ### Agent Discovery and Registration
-- Standardized agent registration pattern
-- Configuration-driven agent enablement
-- Dependency management between agents
-- Version compatibility tracking
+- Standardized agent registration pattern using `AGENT_MODULES.push()`
+- **New**: Agents are self-registering and don't require core system configuration
+- **New**: Agent-specific configuration managed through PropertiesService
+- **New**: Agents create their own labels and manage lifecycle independently
+
+### Self-Contained Agent Guidelines
+
+#### Configuration Management
+- Agents define their own configuration keys with appropriate prefixes
+- Provide sensible defaults to minimize required setup
+- Document all configuration options within the agent file
+- Use PropertiesService directly rather than core Config.gs
+
+#### Label Management
+- Agents create and manage their own labels using `GmailApp.getUserLabelByName() || GmailApp.createLabel()`
+- Use descriptive, agent-specific label names
+- Document label lifecycle and cleanup responsibilities
+
+#### Service Integration
+- Use generic service functions from ADR-012: Generic Service Layer Pattern
+- Avoid duplicating Gmail operations across agents
+- Contribute reusable patterns back to service layer when appropriate
+
+#### Trigger Lifecycle
+- Agents manage their own scheduled execution triggers
+- Clean up existing triggers before creating new ones
+- Implement both installation and cleanup functions
+- Use distinctive trigger names that identify the agent
 
 ## References
 
+- ADR-011: Self-Contained Agent Architecture (current implementation patterns)
+- ADR-012: Generic Service Layer Pattern (supporting infrastructure)
 - PropertiesService documentation for state persistence
 - Apps Script execution time limits and quotas
 - Plugin architecture patterns and best practices
