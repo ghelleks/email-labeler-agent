@@ -2,6 +2,8 @@
 
 This guide provides step-by-step instructions for deploying the Email Agent's Interactive Web App Dashboard.
 
+**Note**: This web app is separate from the Email Summarizer agent. The web app provides on-demand email summarization through a web interface, while the Email Summarizer agent provides automated daily summaries via email. Both can work together or independently.
+
 ## Prerequisites
 
 Before deploying the web app, ensure you have:
@@ -10,6 +12,7 @@ Before deploying the web app, ensure you have:
 - ✅ **Working email labeling system** (you can run the script manually)
 - ✅ **Valid Gemini API key** configured in Script Properties
 - ✅ **All required labels created** (`reply_needed`, `review`, `todo`, `summarize`)
+- ✅ **Optional**: Email Summarizer agent configured if you want automated daily summaries
 
 ## Deployment Steps
 
@@ -23,13 +26,13 @@ cd /path/to/your/email-agent
 **Deploy the web app for specific account**:
 ```bash
 # For personal account
-npm run deploy:personal:all
+npm run deploy:personal
 
 # For work account
-npm run deploy:work:all
+npm run deploy:work
 
 # For all configured accounts
-npm run deploy:all-accounts
+npm run deploy:all
 ```
 
 These commands will:
@@ -53,9 +56,9 @@ If you prefer manual control or the automated deployment doesn't work:
 
 1. **Upload the latest code**:
    ```bash
-   # For specific account
-   npm run push:personal
-   npm run push:work
+   # For specific account (use deploy for complete process)
+   npm run deploy:personal
+   npm run deploy:work
 
    # For legacy single account setup
    npm run push
@@ -334,13 +337,11 @@ When reporting issues, include:
 #### Multi-Account Commands (Current System)
 ```bash
 # Complete deployment (recommended)
-npm run deploy:personal:all  # Deploy everything to personal account
-npm run deploy:work:all      # Deploy everything to work account
-npm run deploy:all-accounts  # Deploy to all configured accounts
+npm run deploy:personal      # Deploy everything to personal account (code + web app + triggers)
+npm run deploy:work          # Deploy everything to work account (code + web app + triggers)
+npm run deploy:all           # Deploy to all configured accounts
 
 # Development workflow
-npm run push:personal        # Upload code to personal account
-npm run push:work           # Upload code to work account
 npm run open:personal       # Open personal Apps Script editor
 npm run open:work          # Open work Apps Script editor
 npm run logs:personal      # View personal account logs

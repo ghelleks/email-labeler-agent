@@ -286,8 +286,8 @@ async function runSetupWizard() {
             console.log(`      clasp --user ${accountName} login`);
           });
           console.log('\n🔄 Ready to use commands:');
-          console.log('   npm run push:personal          - Push to specific account');
-          console.log('   npm run deploy:work:all        - Deploy everything to specific account');
+          console.log('   npm run deploy:personal        - Complete deployment to specific account');
+          console.log('   npm run deploy:work            - Complete deployment to specific account');
           console.log('   npm run status:all             - Check all accounts');
           console.log('\n💡 The new system uses clasp native --user flags - much cleaner!');
           rl.close();

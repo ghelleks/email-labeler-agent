@@ -109,8 +109,8 @@ function showStatus() {
   });
 
   console.log('\n💡 Usage Examples:');
-  console.log('   npm run push:personal          - Push to personal account');
-  console.log('   npm run deploy:work:all        - Full deployment to work account');
+  console.log('   npm run deploy:personal        - Complete deployment to personal account');
+  console.log('   npm run deploy:work            - Complete deployment to work account');
   console.log('   npm run status:all             - Check all accounts');
   console.log('   npm run setup:account          - Add/modify accounts');
 }
