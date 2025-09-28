@@ -121,6 +121,55 @@ function generateSummaryFromEmails_(emails) {
 }
 
 /**
+ * Convert markdown formatting to HTML for email display
+ * Handles headers, bold text, italic text, and links
+ */
+function convertMarkdownToHtml_(markdownText) {
+  if (!markdownText) return '';
+
+  let html = markdownText;
+
+  // Convert headers (### Header -> <h3>Header</h3>)
+  html = html.replace(/^### (.+)$/gm, '<h3 style="color: #2c3e50; margin-top: 1.5em; margin-bottom: 0.5em; font-size: 18px;">$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2 style="color: #2c3e50; margin-top: 1.5em; margin-bottom: 0.5em; font-size: 20px;">$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1 style="color: #2c3e50; margin-top: 1.5em; margin-bottom: 0.5em; font-size: 22px;">$1</h1>');
+
+  // Convert bold text (**text** -> <strong>text</strong>)
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: bold;">$1</strong>');
+
+  // Convert italic text (*text* -> <em>text</em>)
+  html = html.replace(/\*([^*]+)\*/g, '<em style="font-style: italic;">$1</em>');
+
+  // Convert Sources sections to bulleted lists
+  // Pattern: **Sources:** [Link1](url1), [Link2](url2), [Link3](url3)
+  html = html.replace(/\*\*Sources:\*\*\s*(.+)/g, function(match, sourcesList) {
+    // Split the sources by commas and convert each to a list item
+    const sources = sourcesList.split(/,\s*(?=\[)/); // Split on comma followed by [
+    const listItems = sources.map(source => {
+      // Convert links in each source
+      const linkedSource = source.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3498db; text-decoration: none;">$1</a>');
+      return `<li style="margin: 0.3em 0;">${linkedSource.trim()}</li>`;
+    }).join('');
+
+    return `<strong style="font-weight: bold;">Sources:</strong><ul style="margin: 0.5em 0; padding-left: 1.5em;">${listItems}</ul>`;
+  });
+
+  // Convert remaining links ([text](url) -> <a href="url">text</a>)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3498db; text-decoration: none;">$1</a>');
+
+  // Convert line breaks to HTML
+  html = html.replace(/\n\n/g, '</p><p style="margin: 1em 0;">');
+  html = html.replace(/\n/g, '<br>');
+
+  // Wrap in paragraph tags if not already wrapped
+  if (!html.startsWith('<')) {
+    html = '<p style="margin: 1em 0;">' + html + '</p>';
+  }
+
+  return html;
+}
+
+/**
  * Send summary email to configured destination
  * Uses generic service layer for email delivery
  */
@@ -136,16 +185,20 @@ function deliverSummaryEmail_(summaryText, sourceEmails) {
     }
 
     const currentDate = new Date().toLocaleDateString();
-    const subject = `📧 Email Summary - ${currentDate}`;
+    // Fix emoji encoding issue by using plain text
+    const subject = `Email Summary - ${currentDate}`;
+
+    // Convert markdown to HTML for proper email display
+    const htmlSummary = convertMarkdownToHtml_(summaryText);
 
     // Build HTML content with proper styling
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333; border-bottom: 2px solid #e74c3c; padding-bottom: 10px;">
-          📧 Email Summary - ${currentDate}
+        <h2 style="color: #333; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-bottom: 1.5em;">
+          Email Summary - ${currentDate}
         </h2>
         <div style="line-height: 1.6; color: #444;">
-          ${summaryText}
+          ${htmlSummary}
         </div>
         <p style="margin-top: 2em; font-size: 12px; color: #666;">
           This summary was generated automatically from ${sourceEmails.length} email(s)
