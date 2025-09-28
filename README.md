@@ -9,7 +9,19 @@ This system automatically reads your incoming Gmail and sorts it into four actio
 - **`reply_needed`** — Emails requiring your personal response (questions, meeting requests, urgent items)
 - **`review`** — Emails to read but no immediate response needed (updates, newsletters, FYI messages)
 - **`todo`** — Emails representing tasks or action items (assignments, deadlines, follow-ups)
-- **`summarize`** — Long emails or threads that could benefit from AI summarization
+- **`summarize`** — Long emails or threads that are automatically processed by the Email Summarizer agent
+
+### Email Summarizer Agent
+
+The **Email Summarizer** is an intelligent agent that automatically processes emails labeled with `summarize`. It:
+
+- **Retrieves** emails with the `summarize` label from the past 7 days
+- **Generates** Economist-style summaries using AI
+- **Delivers** formatted HTML summaries via email with hyperlinks and source references
+- **Archives** processed emails after relabeling them as `summarized`
+- **Runs** on configurable daily triggers (default: 5 AM)
+
+This agent operates independently and requires no manual intervention once configured.
 
 **Example**: A meeting invitation gets labeled `reply_needed`, while a weekly newsletter gets labeled `review`.
 
@@ -25,6 +37,7 @@ This system automatically reads your incoming Gmail and sorts it into four actio
 **Optional Advanced Features** (you can add these later):
 - ⚪ **Automatic scheduling**: Run every hour without your computer
 - ⚪ **Web dashboard**: On-demand email summaries on your phone
+- ⚪ **Email Summarizer agent**: Automated daily email summaries (included but optional)
 
 **Ready?** Follow the setup guide below. You can stop after the basic setup and add advanced features anytime.
 
@@ -211,6 +224,17 @@ To have the script run automatically every hour, triggers must be installed manu
 
 **Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
 
+### Email Summarizer Trigger Installation (Optional)
+
+To enable daily automated email summaries:
+
+1. In the same Apps Script editor, select "installSummarizerTrigger" from the function dropdown
+2. Click the "Run" button (▶️) to install the daily trigger
+3. The Email Summarizer will run daily at 5 AM
+4. Emails labeled `summarize` will be automatically processed and summarized
+
+**Note**: The Email Summarizer operates independently of the main labeling system. You can enable one without the other.
+
 ## Multi-Account Setup (Advanced)
 
 This section is for users who want to manage multiple Gmail accounts (personal, work, etc.) from one codebase. If you completed the single account setup above, you can migrate to multi-account at any time.
@@ -279,9 +303,9 @@ clasp --user work login
 # Create project files for all accounts
 npm run switch:create-project-files
 
-# Upload code to specific account
-npm run push:personal
-npm run push:work
+# Deploy to specific account (includes code upload + web app + triggers)
+npm run deploy:personal
+npm run deploy:work
 
 # Open Apps Script editor for configuration
 npm run open:personal  # Opens personal account
@@ -309,11 +333,11 @@ This checks that all accounts are properly configured and accessible.
 #### 3b. Test Each Account
 ```bash
 # Test personal account
-npm run push:personal
+npm run deploy:personal
 npm run open:personal  # Test manually in Apps Script editor
 
 # Test work account
-npm run push:work
+npm run deploy:work
 npm run open:work      # Test manually in Apps Script editor
 ```
 
@@ -327,13 +351,13 @@ npm run status:all     # Shows status for all configured accounts
 
 #### 4a. Deploy to Specific Account
 ```bash
-npm run deploy:personal:all   # Full deployment (code + triggers + webapp)
-npm run deploy:work:all       # Full deployment (code + triggers + webapp)
+npm run deploy:personal   # Complete deployment (code + web app + triggers)
+npm run deploy:work       # Complete deployment (code + web app + triggers)
 ```
 
 #### 4b. Deploy to All Accounts at Once
 ```bash
-npm run deploy:all-accounts   # Deploys to ALL configured accounts with confirmation
+npm run deploy:all        # Deploys to ALL configured accounts with confirmation
 ```
 
 ### Multi-Account Daily Workflow
@@ -347,24 +371,19 @@ npm run status:work        # Check work account status
 
 #### Account-Specific Operations
 ```bash
-# Push code changes to specific account
-npm run push:personal
-npm run push:work
+# Deploy changes to specific account (includes push + web app + triggers)
+npm run deploy:personal
+npm run deploy:work
 
 # View logs from specific account
 npm run logs:personal
 npm run logs:work
-
-# Deploy to specific account
-npm run deploy:personal:all
-npm run deploy:work:all
 ```
 
 #### Bulk Operations
 ```bash
-npm run push:all-accounts     # Push to ALL accounts
-npm run status:all           # Check status of ALL accounts
-npm run deploy:all-accounts  # Deploy to ALL accounts (with confirmation)
+npm run status:all       # Check status of ALL accounts
+npm run deploy:all       # Deploy to ALL accounts (with confirmation)
 ```
 
 ### Multi-Account Tips and Best Practices
@@ -375,9 +394,9 @@ npm run deploy:all-accounts  # Deploy to ALL accounts (with confirmation)
 - **Access Control**: Use work Google accounts for work email, personal for personal
 
 #### 🚀 Deployment Strategy
-- **Development**: Use `npm run push:[account]` for quick testing
-- **Production**: Use `npm run deploy:[account]:all` for stable releases
-- **Bulk Updates**: Use `npm run deploy:all-accounts` when updating core functionality
+- **All changes**: Use `npm run deploy:[account]` for complete deployment (includes --force push to prevent skipping)
+- **Production**: Use `npm run deploy:[account]` for stable releases with consistent web app URLs
+- **Bulk Updates**: Use `npm run deploy:all` when updating core functionality across all accounts
 
 #### 🔧 Troubleshooting Multi-Account
 - **Wrong Account Active**: Check with `npm run switch:status`
@@ -403,7 +422,8 @@ After running the script:
 - **`reply_needed`**: Check these emails first — they need your response
 - **`review`**: Read when you have time — informational content
 - **`todo`**: Action items and tasks to add to your task list
-- **`summarize`**: Long emails you might want to summarize later
+- **`summarize`**: Long emails that will be automatically processed by the Email Summarizer agent
+- **`summarized`**: Emails that have been processed and summarized by the Email Summarizer agent
 
 Each email gets exactly one label to keep things simple and clear.
 
@@ -449,13 +469,13 @@ For detailed web app setup instructions, see [docs/webapp-setup.md](docs/webapp-
 
 **Quick Setup (Automated)**:
 ```bash
-npm run deploy:webapp
+npm run deploy:personal   # or deploy:work
 ```
 
 This command will:
 1. Upload your latest code to Apps Script
-2. Create a new web app deployment
-3. **Automatically display your web app URL** for bookmarking
+2. Create or update the web app deployment maintaining consistent URLs
+3. Install triggers and **automatically display your web app URL** for bookmarking
 
 **Manual Setup Alternative**:
 1. In the Apps Script editor, click "Deploy" → "New deployment"
@@ -465,10 +485,12 @@ This command will:
 
 **Getting Your Web App URL Anytime**:
 ```bash
-npm run webapp:url
+npm run url:personal    # Get personal account web app URL
+npm run url:work        # Get work account web app URL
+npm run url:all         # Get all web app URLs
 ```
 
-This command shows your current web app URL and setup instructions.
+These commands show your current web app URLs and setup instructions.
 
 #### How to Use the Web App
 
@@ -488,6 +510,32 @@ You can customize the web app behavior with these Script Properties:
 |---------|---------|-------------|
 | `WEBAPP_ENABLED` | `true` | Enable/disable web app functionality |
 | `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process in web app per summary |
+
+### Email Summarizer Agent Configuration
+
+The Email Summarizer agent can be configured with these Script Properties:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `SUMMARIZER_ENABLED` | `true` | Enable/disable the Email Summarizer agent |
+| `SUMMARIZER_MAX_AGE_DAYS` | `7` | Maximum age of emails to include in summaries |
+| `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process per summary |
+| `SUMMARIZER_DESTINATION_EMAIL` | Your email | Email address to receive summaries |
+| `SUMMARIZER_DEBUG` | `false` | Enable detailed logging for the agent |
+| `SUMMARIZER_DRY_RUN` | `false` | Test mode for the agent (doesn't process emails) |
+
+**How the Email Summarizer Works:**
+1. **Daily Processing**: Runs automatically at 5 AM (configurable)
+2. **Smart Collection**: Finds emails with `summarize` label from the past 7 days
+3. **AI Summarization**: Generates Economist-style summaries with hyperlinks
+4. **Email Delivery**: Sends formatted HTML summaries to your configured email
+5. **Archive Management**: Relabels processed emails as `summarized` and archives them
+
+**Setting Up the Email Summarizer:**
+1. The agent is enabled by default after deployment
+2. Configure destination email if different from your main account
+3. Install triggers manually in Apps Script editor (select `installSummarizerTrigger` and run)
+4. Emails labeled `summarize` will be processed in the next daily run
 
 **Settings Details**:
 - **`WEBAPP_ENABLED`**: Set to `false` to completely disable web app features while keeping automatic labeling active
@@ -547,19 +595,12 @@ npm run auth:help                   # Show authentication guidance
 npm run switch:status               # Show all account statuses
 ```
 
-#### Account-Specific Operations
+#### Deployment Operations (Streamlined)
 ```bash
-# Push Code
-npm run push:personal               # Push code to personal account
-npm run push:work                   # Push code to work account
-
-# Deploy (Push + Deploy)
-npm run deploy:personal             # Push + deploy to personal account
-npm run deploy:work                 # Push + deploy to work account
-
-# Complete Deployment (Push + Deploy + Trigger Setup)
-npm run deploy:personal:all         # Complete deployment to personal account
-npm run deploy:work:all             # Complete deployment to work account
+# Core Deployment Commands (Push + Web App + Triggers)
+npm run deploy:personal             # Complete deployment to personal account
+npm run deploy:work                 # Complete deployment to work account
+npm run deploy:all                  # Deploy to all configured accounts
 
 # Monitoring and Logs
 npm run logs:personal               # View execution logs from personal account
@@ -576,8 +617,6 @@ npm run open:work                   # Open Apps Script editor for work account
 ```bash
 # Batch Operations (All Accounts)
 npm run status:all                  # Show status for all configured accounts
-npm run deploy:all-accounts         # Deploy to all configured accounts
-npm run push:all-accounts           # Push to all configured accounts
 ```
 
 ## Troubleshooting
@@ -604,6 +643,23 @@ npm run push:all-accounts           # Push to all configured accounts
 **🔍 Problem**: No emails being processed
 - **Solution**: Check that you have recent emails without existing labels
 - **Solution**: Set `DEBUG=true` and check the execution logs
+
+### Email Summarizer Troubleshooting
+
+**🔍 Problem**: Email Summarizer not running automatically
+- **Solution**: Install the summarizer trigger by running `installSummarizerTrigger` in Apps Script editor
+- **Solution**: Check the "Triggers" section to verify the daily trigger exists
+- **Solution**: Verify `SUMMARIZER_ENABLED=true` in Script Properties
+
+**🔍 Problem**: No summary emails being received
+- **Solution**: Check that you have emails with the `summarize` label from the past 7 days
+- **Solution**: Verify `SUMMARIZER_DESTINATION_EMAIL` is set to your correct email address
+- **Solution**: Check Gmail spam folder for summary emails
+
+**🔍 Problem**: Email Summarizer times out or fails
+- **Solution**: Reduce `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` to a smaller number (try `25`)
+- **Solution**: Check that `DAILY_GEMINI_BUDGET` hasn't been exceeded
+- **Solution**: Enable `SUMMARIZER_DEBUG=true` and check execution logs
 
 ### Multi-Account Troubleshooting
 
@@ -670,6 +726,17 @@ All settings are optional and have sensible defaults:
 | `DRY_RUN` | `false` | Test mode (analyze but don't apply labels) |
 | `DEBUG` | `false` | Verbose logging for troubleshooting |
 
+### Email Summarizer Agent
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `SUMMARIZER_ENABLED` | `true` | Enable/disable the Email Summarizer agent |
+| `SUMMARIZER_MAX_AGE_DAYS` | `7` | Maximum age of emails to include in summaries |
+| `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process per summary |
+| `SUMMARIZER_DESTINATION_EMAIL` | Your email | Email address to receive summaries |
+| `SUMMARIZER_DEBUG` | `false` | Enable detailed logging for the agent |
+| `SUMMARIZER_DRY_RUN` | `false` | Test mode for the agent |
+
 ## Updating and Deploying the Script
 
 ### Understanding Deployment Types
@@ -681,51 +748,34 @@ There are two types of deployments in this system:
 
 ### Development Updates
 
-For simple code changes during development:
+For code changes during development:
 
 ```bash
-npm run push
+npm run deploy:personal   # or deploy:work for specific account
 ```
 
-This uploads any code changes to your Apps Script project but doesn't create deployments.
+This uploads code changes and maintains web app deployment consistency. The streamlined deployment includes the --force flag to prevent "skipping push" issues.
 
 ### Production Deployments
 
-For significant updates (like model changes or new features), use the proper deployment workflow:
+For significant updates (like model changes or new features), use the streamlined deployment workflow:
 
-#### Basic Deployment
+#### Complete Deployment
 ```bash
-npm run deploy
+npm run deploy:personal   # Deploy to personal account
+npm run deploy:work       # Deploy to work account
+npm run deploy:all        # Deploy to all accounts
 ```
 
-This command:
-1. Creates a timestamped stable version (e.g., `stable-20241127-143052`)
-2. Deploys that version as a new deployment
-3. Provides a stable rollback point if needed
+Each deployment command:
+1. Pushes code with --force flag to prevent "skipping push" issues
+2. Creates a new versioned deployment
+3. Maintains consistent web app URLs by redeploying to existing deployments
+4. Automatically installs triggers
+5. **Shows your web app URL immediately**
+6. **Recommended for all production updates**
 
-#### Complete System Deployment
-```bash
-npm run deploy:all
-```
-
-This command:
-1. Runs the complete deployment process
-2. Automatically installs the hourly trigger to ensure it uses the new deployment
-3. **Use this when**: First-time setup, updating AI models, changing trigger behavior, or major functionality changes
-4. **Recommended for most production updates**
-
-#### Web App Only Deployment
-```bash
-npm run deploy:webapp
-```
-
-This command:
-1. Uploads current code
-2. Creates a web app deployment
-3. **Shows your web app URL immediately**
-4. Perfect for initial web app setup or web app updates
-
-**Why use deployment commands?** They create stable versions with timestamps, making it easy to track changes and rollback if something goes wrong. This is especially important when updating AI models or core functionality.
+**Why use the streamlined deployment?** The new deployment script intelligently manages web app deployments to maintain consistent URLs while ensuring all components (code, web app, triggers) are properly updated together.
 
 ### Manual Version Control
 
@@ -748,30 +798,27 @@ npm run version          # Creates a version with custom description
 
 | Scenario | Command | Why |
 |----------|---------|-----|
-| Quick bug fix or minor tweak | `npm run push` | Fast, works for development |
-| New feature or configuration change | `npm run deploy` | Creates stable version for rollback |
-| Complete system setup or major updates | `npm run deploy:all` | Ensures triggers use new deployment + full system setup |
-| Email processing setup only | `npm run deploy:triggers` | Backend deployment with trigger installation |
-| Setting up web app for first time | `npm run deploy:webapp` | Quick web app deployment with immediate URL |
-| Getting web app URL after setup | `npm run webapp:url` | Shows current web app URL and instructions |
-| Testing new changes | `npm run push` + manual testing | Safe development workflow |
+| Any code changes or updates | `npm run deploy:[account]` | Complete deployment with consistent URLs |
+| Deploy to all accounts | `npm run deploy:all` | Batch deployment across all configured accounts |
+| Complete system setup or major updates | `npm run deploy:[account]` | Ensures all components updated together |
+| Getting web app URL after setup | `npm run url:[account]` | Shows current web app URL and instructions |
+| Testing new changes | `npm run deploy:[account]` in test mode | Safe development workflow with --force push |
 
 ### Example: Updating AI Model
 
 When you update your AI model (like switching to a newer Gemini version):
 
 1. Make your code changes locally
-2. Test with `npm run push` and manual execution
-3. Once satisfied, deploy with `npm run deploy:all`
-4. Verify the trigger is working with the new model
+2. Deploy with `npm run deploy:[account]` which includes testing and production deployment
+3. Verify the trigger is working with the new model using the web app URL provided
 
-This ensures your scheduled runs use the updated model and any trigger-related changes take effect.
+This ensures your scheduled runs use the updated model and maintains consistent web app URLs.
 
 ## Uninstalling
 
 To completely remove the system:
 
-1. **Remove automatic triggers**: Run `npm run trigger:delete` or use the Apps Script UI
+1. **Remove automatic triggers**: Use the Apps Script UI (no trigger:delete command available)
 2. **Clear settings**: Delete Script Properties in the Apps Script editor
 3. **Remove labels**: Manually delete the Gmail labels if desired
 4. **Revoke permissions**: Visit [Google Account permissions](https://myaccount.google.com/permissions) and remove access

@@ -47,12 +47,12 @@ We implemented a comprehensive multi-account deployment system using clasp's nat
 }
 ```
 
-**Account-Specific Operations:**
+**Streamlined Deployment Operations:**
 ```json
 {
-  "push:personal": "clasp --user personal --project .clasp.json.personal push",
-  "deploy:personal": "clasp --user personal --project .clasp.json.personal push && deploy",
-  "deploy:personal:all": "push + deploy + trigger installation for personal account",
+  "deploy:personal": "Complete deployment (code + web app + triggers) to personal account",
+  "deploy:work": "Complete deployment (code + web app + triggers) to work account",
+  "deploy:all": "Deploy to all configured accounts with confirmation",
   "logs:personal": "clasp --user personal --project .clasp.json.personal logs",
   "open:personal": "clasp --user personal --project .clasp.json.personal open-script"
 }
@@ -61,9 +61,7 @@ We implemented a comprehensive multi-account deployment system using clasp's nat
 **Batch Operations:**
 ```json
 {
-  "status:all": "Show status for all configured accounts",
-  "deploy:all-accounts": "Deploy to all accounts with confirmation",
-  "push:all-accounts": "Push code to all accounts simultaneously"
+  "status:all": "Show status for all configured accounts"
 }
 ```
 
@@ -135,15 +133,13 @@ npm run switch:create-project-files   # Create clasp project files
 npm run validate:accounts             # Validate configuration
 
 # Account-Specific Deployment
-npm run deploy:personal:all           # Complete deployment to personal account
-npm run deploy:work:all              # Complete deployment to work account
-npm run push:personal                # Push code only to personal account
+npm run deploy:personal              # Complete deployment to personal account
+npm run deploy:work                  # Complete deployment to work account
 npm run logs:personal                # View personal account logs
 
 # Batch Operations
-npm run deploy:all-accounts           # Deploy to all configured accounts
+npm run deploy:all                   # Deploy to all configured accounts
 npm run status:all                   # Check all account statuses
-npm run push:all-accounts            # Push to all accounts
 ```
 
 ### Version Management Strategy
@@ -159,7 +155,7 @@ npm run push:all-accounts            # Push to all accounts
 4. Verify system functionality after rollback
 
 ### Trigger Management Integration
-- `deploy:[account]:all` attempts automated trigger installation but may fail
+- `deploy:[account]` attempts automated trigger installation but may fail
 - Manual trigger installation through Apps Script editor is recommended
 - Each account requires separate trigger installation
 - Open specific account editor: `npm run open:personal` or `npm run open:work`

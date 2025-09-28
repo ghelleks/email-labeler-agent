@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Always obey the decisions recorded in the Architecture Design Records directory (docs/adr). The user must approve any violations of these rules or decisions.
 - This is a Google Apps Script project using the V8 runtime with clasp for local development
 - All source code resides in the `src/` directory and uses `.gs` extensions for Google Apps Script files
-- The system follows a pluggable agent architecture defined in ADR-004
+- The system follows a pluggable agent architecture defined in ADR-004, with enhanced self-contained agent patterns (ADR-011)
+- Generic service layer pattern (ADR-012) provides reusable functions for agent development
 
 ## Development Commands
 
@@ -23,19 +24,12 @@ npm run auth:help                   # Show authentication guidance
 npm run switch:status               # Show all account statuses
 ```
 
-### Account-Specific Operations
+### Deployment Operations (Streamlined)
 ```bash
-# Push Code
-npm run push:personal               # Push code to personal account
-npm run push:work                   # Push code to work account
-
-# Deploy (Push + Deploy)
-npm run deploy:personal             # Push + deploy to personal account
-npm run deploy:work                 # Push + deploy to work account
-
-# Complete Deployment (Push + Deploy + Trigger Setup)
-npm run deploy:personal:all         # Complete deployment to personal account
-npm run deploy:work:all             # Complete deployment to work account
+# Core Deployment Commands (Push + Web App + Triggers)
+npm run deploy:personal             # Complete deployment to personal account
+npm run deploy:work                 # Complete deployment to work account
+npm run deploy:all                  # Deploy to all configured accounts
 
 # Monitoring and Logs
 npm run logs:personal               # View execution logs from personal account
@@ -57,8 +51,6 @@ npm run url:all                     # Get web app URLs for all accounts
 ```bash
 # Batch Operations (All Accounts)
 npm run status:all                  # Show status for all configured accounts
-npm run deploy:all-accounts         # Deploy to all configured accounts
-npm run push:all-accounts           # Push to all configured accounts
 ```
 
 ### Account Setup Process
@@ -68,7 +60,7 @@ npm run push:all-accounts           # Push to all configured accounts
 2. **Authentication**: Log into each account with `clasp --user [account] login`
 3. **Project Files**: Run `npm run switch:create-project-files` to create clasp project files
 4. **Validation**: Run `npm run validate:accounts` to verify setup
-5. **Deploy**: Use `npm run deploy:[account]:all` for complete deployment
+5. **Deploy**: Use `npm run deploy:[account]` for complete deployment
 
 #### Account Configuration Format
 The system uses `accounts.json` to manage multiple Google Apps Script deployments:
@@ -78,15 +70,19 @@ The system uses `accounts.json` to manage multiple Google Apps Script deployment
   "accounts": {
     "work": {
       "scriptId": "1Yyl2UjvQOBKxT1J6OXPzR0q5bpRBdLuE7MUgTuVdV7uUtdltIxQyQBK-",
-      "description": "Red Hat"
+      "description": "Red Hat",
+      "webAppDeploymentId": "AKfycbx1L7phZrDzB699TRLDhSb5PCLbufYiGXcRU9ZPz2A"
     },
     "personal": {
       "scriptId": "1JvaGS8HDHIJoebhjY_2bQjUx0Tx2XVyHSJkaA5gV7_MEUWBixuRsHPno",
-      "description": "Personal Gmail Account"
+      "description": "Personal Gmail Account",
+      "webAppDeploymentId": "AKfycbxH3nXXSOQ1teErs4nA8uojO2AI_qVLIeVY8HLHkkBv"
     }
   }
 }
 ```
+
+**Note**: The `webAppDeploymentId` field is automatically managed by the deployment script to maintain consistent web app URLs.
 
 #### Authentication Requirements
 Each account requires separate authentication:
@@ -103,14 +99,13 @@ clasp --user work login        # Log into work account
 3. Click the Run button to install triggers
 4. Grant necessary permissions when prompted
 
-The `deploy:[account]:all` commands attempt automated trigger installation but may fail on the `clasp run` portion.
+The `deploy:[account]` commands attempt automated trigger installation but may fail on the `clasp run` portion.
 
 #### Deployment Strategy Guide
-- **First-time setup**: Use `npm run deploy:[account]:all` for complete system setup
-- **Code updates**: Use `npm run deploy:[account]` for code deployment only
-- **Quick testing**: Use `npm run push:[account]` to push code without deployment
-- **Production updates**: Use `npm run deploy:[account]:all` and manually verify triggers
-- **Multiple accounts**: Use `npm run deploy:all-accounts` for batch deployment
+- **Complete deployment**: Use `npm run deploy:[account]` for full system deployment (code + web app + triggers)
+- **All accounts**: Use `npm run deploy:all` for batch deployment to all configured accounts
+- **The deployment script uses --force flag** to prevent "skipping push" issues
+- **Smart web app deployment**: Maintains consistent URLs by redeploying to existing deployments rather than creating new ones
 
 ## Architecture Overview
 
@@ -119,11 +114,13 @@ The `deploy:[account]:all` commands attempt automated trigger installation but m
 - **Organizer.gs**: Applies categorization results and manages Gmail labels
 - **LLMService.gs**: Handles Gemini AI integration with dual authentication (API key or Vertex AI)
 - **Agents.gs**: Pluggable agent system for extensible email processing
-- **GmailService.gs**: Gmail API operations and thread management
+- **GmailService.gs**: Gmail API operations, thread management, and generic service functions
 - **Config.gs**: Configuration management using Apps Script Properties
 - **RuleDocService.gs**: Integration with Google Drive for classification rules
 - **WebAppController.gs**: Web app entry point and API orchestration for interactive dashboard
 - **WebApp.html**: Mobile-optimized HTML interface for on-demand email summarization
+- **AgentSummarizer.gs**: Self-contained Email Summarizer agent with independent lifecycle management
+- **AgentTemplate.gs**: Enhanced agent template demonstrating self-contained patterns
 
 ### Data Flow
 1. `findUnprocessed_()` identifies unlabeled email threads
@@ -148,20 +145,52 @@ Configuration uses Apps Script Script Properties accessible via the Apps Script 
 - `WEBAPP_ENABLED`: Enable/disable web app functionality (default: true)
 - `WEBAPP_MAX_EMAILS_PER_SUMMARY`: Maximum emails to process in web app per summary (default: 25)
 
+#### Email Summarizer Agent Configuration
+- `SUMMARIZER_ENABLED`: Enable/disable Email Summarizer agent (default: true)
+- `SUMMARIZER_MAX_AGE_DAYS`: Maximum age of emails to include in summaries (default: 7)
+- `SUMMARIZER_MAX_EMAILS_PER_SUMMARY`: Maximum emails to process per summary (default: 50)
+- `SUMMARIZER_DESTINATION_EMAIL`: Email address to receive summaries (default: user's email)
+- `SUMMARIZER_DEBUG`: Enable detailed logging for the agent (default: false)
+- `SUMMARIZER_DRY_RUN`: Test mode for the agent (default: false)
+
 ## Development Patterns
 
 ### Adding New Agent Modules
-Follow the pluggable agent pattern defined in ADR-004:
-1. Create agent in `ExampleAgents.gs` or separate file
+The system supports two agent architecture patterns:
+
+#### Self-Contained Agents (Recommended - ADR-011)
+For complex agents that need independent lifecycle management:
+1. Create agent file (e.g., `AgentMyFeature.gs`) with complete self-management
+2. Implement configuration management with agent-specific property keys
+3. Handle label creation and management within the agent
+4. Manage own trigger lifecycle for scheduled execution
+5. Use generic service functions from `GmailService.gs` for common operations
+6. Register with `AGENT_MODULES` pattern for framework integration
+
+#### Traditional Agents (Simple Cases)
+For simple post-processing agents:
+1. Create agent in `AgentTemplate.gs` or separate file
 2. Register via `registerAgents()` function or `Agents.registerAllModules()`
 3. Agents receive email data and can modify classification results
 
+#### Generic Service Layer (ADR-012)
+Use these functions for common operations:
+- `findEmailsByLabelWithAge_()`: Find emails with label and age constraints
+- `manageLabelTransition_()`: Efficient label management
+- `archiveEmailsByIds_()`: Batch email archiving
+- `sendFormattedEmail_()`: Send formatted HTML emails
+
 ### Classification Labels
-The system uses exactly four labels (ADR-003):
+The system uses exactly four core labels (ADR-003):
 - `reply_needed`: Emails requiring personal response
 - `review`: Informational emails to read
 - `todo`: Action items and tasks
-- `summarize`: Long emails that benefit from AI summarization
+- `summarize`: Long emails that are processed by the Email Summarizer agent
+
+#### Agent-Managed Labels
+Self-contained agents may create and manage additional labels:
+- `summarized`: Emails processed by the Email Summarizer agent (archived)
+- Custom agent labels as needed (agents manage their own label lifecycle)
 
 ### Error Handling
 - All configuration errors should be descriptive and actionable
@@ -184,13 +213,16 @@ Refer to `docs/adr/` for complete context:
 - **ADR-005**: Batch processing with budget management
 - **ADR-006**: Support for both API key and Vertex AI authentication
 - **ADR-007**: Google Drive document integration for classification rules
+- **ADR-011**: Self-contained agent architecture for independent modules
+- **ADR-012**: Generic service layer pattern for reusable agent operations
 
 ## Testing and Debugging
 
 ### Local Development
-- Use `npm run push:[account]` after any code changes
+- Use `npm run deploy:[account]` after any code changes (includes push with --force flag)
 - Enable `DEBUG=true` in Script Properties for verbose logging
 - Use `DRY_RUN=true` to test classification without applying labels
+- The deployment script automatically handles web app URL consistency
 
 ### Monitoring
 - Check execution logs via `npm run logs:[account]` or Apps Script editor
@@ -223,7 +255,14 @@ Refer to `docs/adr/` for complete context:
 
 **🔍 Problem**: Trigger installation fails
 - **Solution**: Install triggers manually in Apps Script editor using `installTrigger` function
+- **Solution**: For Email Summarizer, use `installSummarizerTrigger` function
 - **Solution**: Automated `clasp run` trigger installation is unreliable due to permissions
+
+**🔍 Problem**: Email Summarizer not working
+- **Solution**: Verify `SUMMARIZER_ENABLED=true` in Script Properties
+- **Solution**: Install summarizer trigger with `installSummarizerTrigger` function
+- **Solution**: Check that emails with `summarize` label exist from past 7 days
+- **Solution**: Enable `SUMMARIZER_DEBUG=true` for detailed logging
 
 **🔍 Problem**: Multi-account commands not working
 - **Solution**: Ensure you have the latest `package.json` with multi-account scripts

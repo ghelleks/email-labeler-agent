@@ -29,9 +29,10 @@ All ADRs in this project follow a consistent format defined in [template.md](tem
 
 ### Implementation Details (Lower Priority)
 - [ADR-008: Interactive Web App Integration for Email Agent Dashboard](008-interactive-web-app-integration.md)
-- ADR-009: Apps Script V8 Runtime Selection (planned)
-- ADR-010: Clasp-Based Development Workflow (planned)
-- ADR-011: Idempotency and State Management (planned)
+- [ADR-009: Deployment Automation Strategy](009-deployment-automation.md)
+- [ADR-010: PromptBuilder and LLMService Separation](010-promptbuilder-llmservice-separation.md)
+- [ADR-011: Self-Contained Agent Architecture](011-self-contained-agents.md)
+- [ADR-012: Generic Service Layer Pattern](012-generic-service-layer.md)
 
 ## Status Legend
 

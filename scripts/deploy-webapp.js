@@ -68,7 +68,7 @@ function deployToAccount(account) {
 
   // Step 1: Push latest code
   execCommand(
-    `clasp --user ${account} --project .clasp.json.${account} push`,
+    `clasp --user ${account} --project .clasp.json.${account} push --force`,
     `Pushing code to ${account}`
   );
 

@@ -249,11 +249,10 @@ async function main() {
   if (args.length === 0) {
     console.log('Multi-Account Operations using native clasp --user and --project flags:');
     console.log('  npm run status:all              Show status for all accounts');
-    console.log('  npm run deploy:all-accounts     Deploy to all accounts');
-    console.log('  npm run push:all-accounts       Push to all accounts');
+    console.log('  npm run deploy:all              Deploy to all accounts');
     console.log('');
     console.log('💡 Individual account operations available via npm scripts:');
-    console.log('  npm run push:personal           npm run deploy:work:all');
+    console.log('  npm run deploy:personal         npm run deploy:work');
     console.log('');
     return;
   }
