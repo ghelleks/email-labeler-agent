@@ -9,19 +9,7 @@ This system automatically reads your incoming Gmail and sorts it into four actio
 - **`reply_needed`** — Emails requiring your personal response (questions, meeting requests, urgent items)
 - **`review`** — Emails to read but no immediate response needed (updates, newsletters, FYI messages)
 - **`todo`** — Emails representing tasks or action items (assignments, deadlines, follow-ups)
-- **`summarize`** — Long emails or threads that are automatically processed by the Email Summarizer agent
-
-### Email Summarizer Agent
-
-The **Email Summarizer** is an intelligent agent that automatically processes emails labeled with `summarize`. It:
-
-- **Retrieves** emails with the `summarize` label from the past 7 days
-- **Generates** Economist-style summaries using AI
-- **Delivers** formatted HTML summaries via email with hyperlinks and source references
-- **Archives** processed emails after relabeling them as `summarized`
-- **Runs** on configurable daily triggers (default: 5 AM)
-
-This agent operates independently and requires no manual intervention once configured.
+- **`summarize`** — Long emails or threads that benefit from AI summarization
 
 **Example**: A meeting invitation gets labeled `reply_needed`, while a weekly newsletter gets labeled `review`.
 
@@ -33,11 +21,6 @@ This agent operates independently and requires no manual intervention once confi
 ✅ **Time Required**: 5-10 minutes for basic setup
 ✅ **Technical Level**: Beginner-friendly with step-by-step instructions
 ✅ **What You'll Get**: Your Gmail automatically organized into 4 helpful categories
-
-**Optional Advanced Features** (you can add these later):
-- ⚪ **Automatic scheduling**: Run every hour without your computer
-- ⚪ **Web dashboard**: On-demand email summaries on your phone
-- ⚪ **Email Summarizer agent**: Automated daily email summaries (included but optional)
 
 **Ready?** Follow the setup guide below. You can stop after the basic setup and add advanced features anytime.
 
@@ -211,33 +194,208 @@ In the Apps Script editor, configure your project:
 
 If you set `DRY_RUN=true`, the script will analyze emails but won't apply labels yet (recommended for testing).
 
-## Optional: Schedule Automatic Processing
+## Understanding Your Results
 
-To have the script run automatically every hour, triggers must be installed manually due to permission limitations:
+After running the script:
 
-### Trigger Installation Process
-1. Open the Apps Script editor: `npm run open`
-2. Select "installTrigger" from the function dropdown
-3. Click the "Run" button (▶️)
-4. Grant necessary permissions when prompted
-5. Check the "Triggers" section in the left sidebar to confirm it was created
+- **`reply_needed`**: Check these emails first — they need your response
+- **`review`**: Read when you have time — informational content
+- **`todo`**: Action items and tasks to add to your task list
+- **`summarize`**: Long emails that benefit from AI summarization
 
-**Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
+Each email gets exactly one label to keep things simple and clear.
 
-### Email Summarizer Trigger Installation (Optional)
+## 🎉 Congratulations!
 
-To enable daily automated email summaries:
+You now have automated email labeling set up! Your Gmail will automatically organize new emails into helpful categories. You can run the script manually anytime by clicking "Run" in the Apps Script editor.
 
-1. In the same Apps Script editor, select "installSummarizerTrigger" from the function dropdown
-2. Click the "Run" button (▶️) to install the daily trigger
-3. The Email Summarizer will run daily at 5 AM
-4. Emails labeled `summarize` will be automatically processed and summarized
+**Ready for more?** The following advanced features are completely optional. Each can be added independently:
 
-**Note**: The Email Summarizer operates independently of the main labeling system. You can enable one without the other.
+- ✨ **Automatic Scheduling**: Run every hour without your intervention
+- 📨 **Email Summarizer Agent**: Daily automated email summaries
+- 📱 **Interactive Web App**: On-demand summarization from your phone
+- 🔄 **Multi-Account Setup**: Manage multiple Gmail accounts
+- 🎯 **Custom Classification Rules**: Fine-tune categorization logic
 
-## Multi-Account Setup (Advanced)
+## Advanced Features (Optional)
 
-This section is for users who want to manage multiple Gmail accounts (personal, work, etc.) from one codebase. If you completed the single account setup above, you can migrate to multi-account at any time.
+The core email labeling system is now complete! The following features are optional add-ons that extend the system's capabilities. Each section is self-contained — you can enable any combination that suits your needs.
+
+---
+
+## 1. Automatic Scheduling
+
+**What it adds**: Your script runs automatically every hour without your computer being on.
+
+**Why you might want this**: Set it and forget it — your emails get organized continuously without manual intervention.
+
+### Setup Instructions
+
+To have the script run automatically every hour:
+
+1. In the Apps Script editor, select "installTrigger" from the function dropdown
+2. Click the "Run" button (▶️)
+3. Grant necessary permissions when prompted
+4. Check the "Triggers" section in the left sidebar to confirm it was created
+
+**Note**: You can run the script manually anytime, but triggers make it truly automatic.
+
+---
+
+## 2. Email Summarizer Agent
+
+**What it adds**: Automatic daily summaries of emails labeled with `summarize`.
+
+**Why you might want this**: Perfect for processing newsletters, long email threads, or multiple related emails into digestible summaries delivered to your inbox.
+
+### How the Email Summarizer Works
+
+The **Email Summarizer** is an intelligent agent that:
+
+- **Retrieves** emails with the `summarize` label from the past 7 days
+- **Generates** Economist-style summaries using AI
+- **Delivers** formatted HTML summaries via email with hyperlinks and source references
+- **Archives** processed emails after relabeling them as `summarized`
+- **Runs** on configurable daily triggers (default: 5 AM)
+
+This agent operates independently and requires no manual intervention once configured.
+
+### Email Summarizer Setup
+
+**Prerequisites**: Complete the basic email labeling setup first.
+
+1. **Install the summarizer trigger**:
+   - In the Apps Script editor, select "installSummarizerTrigger" from the function dropdown
+   - Click the "Run" button (▶️) to install the daily trigger
+   - The Email Summarizer will run daily at 5 AM
+
+2. **Start using it**:
+   - Apply the `summarize` label to emails in Gmail
+   - Wait for the next daily run (or test manually by running `runSummarizerAgent` in the editor)
+   - Receive summary emails in your inbox
+
+### Email Summarizer Configuration
+
+Customize the summarizer with these Script Properties:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `SUMMARIZER_ENABLED` | `true` | Enable/disable the Email Summarizer agent |
+| `SUMMARIZER_MAX_AGE_DAYS` | `7` | Maximum age of emails to include in summaries |
+| `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process per summary |
+| `SUMMARIZER_DESTINATION_EMAIL` | Your email | Email address to receive summaries |
+| `SUMMARIZER_DEBUG` | `false` | Enable detailed logging for the agent |
+| `SUMMARIZER_DRY_RUN` | `false` | Test mode for the agent |
+
+### Email Summarizer Troubleshooting
+
+**🔍 Problem**: Email Summarizer not running automatically
+- **Solution**: Install the summarizer trigger by running `installSummarizerTrigger` in Apps Script editor
+- **Solution**: Check the "Triggers" section to verify the daily trigger exists
+- **Solution**: Verify `SUMMARIZER_ENABLED=true` in Script Properties
+
+**🔍 Problem**: No summary emails being received
+- **Solution**: Check that you have emails with the `summarize` label from the past 7 days
+- **Solution**: Verify `SUMMARIZER_DESTINATION_EMAIL` is set to your correct email address
+- **Solution**: Check Gmail spam folder for summary emails
+
+**🔍 Problem**: Email Summarizer times out or fails
+- **Solution**: Reduce `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` to a smaller number (try `25`)
+- **Solution**: Check that `DAILY_GEMINI_BUDGET` hasn't been exceeded
+- **Solution**: Enable `SUMMARIZER_DEBUG=true` and check execution logs
+
+---
+
+## 3. Interactive Web App Dashboard
+
+**What it adds**: A mobile-optimized web interface for on-demand email summarization and archiving.
+
+**Why you might want this**: Perfect for processing emails on-the-go from your phone, getting quick summaries of accumulated emails, or archiving processed emails with one tap.
+
+### Web App Features
+
+- **Works on phones and computers**: Touch-optimized interface for any device
+- **AI Summarization**: Get short summaries of long emails in newspaper style
+- **Email Count Accuracy**: Know exactly what will be archived before you confirm
+- **Source Email Links**: Direct links back to your Gmail threads
+- **Web Link Extraction**: Automatically finds and displays URLs from emails
+- **Dark Mode Support**: Automatically adapts to your device preferences
+
+### Web App Setup
+
+**Prerequisites**: Complete the basic email labeling setup first.
+
+#### Quick Setup (Automated)
+```bash
+npm run deploy:personal   # or deploy:work if using multi-account
+```
+
+This command will:
+1. Upload your latest code to Apps Script
+2. Create or update the web app deployment maintaining consistent URLs
+3. Install triggers and **automatically display your web app URL** for bookmarking
+
+#### Manual Setup Alternative
+1. In the Apps Script editor, click "Deploy" → "New deployment"
+2. Choose type: "Web app", Execute as: "Me", Access: "Only myself"
+3. Click "Deploy" and copy the web app URL
+4. Bookmark the URL for easy access
+
+#### Getting Your Web App URL Anytime
+```bash
+npm run url:personal    # Get personal account web app URL
+npm run url:work        # Get work account web app URL (multi-account)
+npm run url:all         # Get all web app URLs (multi-account)
+```
+
+### How to Use the Web App
+
+1. **Label emails for summarization**: Apply the `summarize` label to emails in Gmail
+2. **Open the web dashboard**: Visit your web app URL
+3. **Get Summary**: Tap "Get Summary" to process all emails with the `summarize` label
+4. **Review the summary**: Read the AI-generated consolidated summary with source links
+5. **Archive emails**: Tap "Archive X Emails" to remove labels and archive the processed emails
+
+**Pro Tip**: The web app is perfect for processing newsletters, long email threads, or multiple related emails at once.
+
+### Web App Configuration
+
+Customize the web app with these Script Properties:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `WEBAPP_ENABLED` | `true` | Enable/disable web app functionality |
+| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process in web app per summary |
+
+### Web App Troubleshooting
+
+**🔍 Problem**: Web app shows "Web app functionality is disabled"
+- **Solution**: Set `WEBAPP_ENABLED=true` in Script Properties
+- **Solution**: Redeploy the web app if the setting was changed after deployment
+
+**🔍 Problem**: "No emails found with 'summarize' label"
+- **Solution**: Apply the `summarize` label to some emails in Gmail first
+- **Solution**: Verify the label exists and is spelled correctly (all lowercase)
+
+**🔍 Problem**: Web app times out during summarization
+- **Solution**: Reduce `WEBAPP_MAX_EMAILS_PER_SUMMARY` to a smaller number (try `10`)
+- **Solution**: Check that `DAILY_GEMINI_BUDGET` hasn't been exceeded
+
+**🔍 Problem**: Archive button doesn't work
+- **Solution**: Ensure you've generated a summary first before trying to archive
+- **Solution**: Check that emails still have the `summarize` label applied
+
+**🔍 Problem**: Web app URL not working
+- **Solution**: Redeploy the web app and get a new URL
+- **Solution**: Check that deployment type is set to "Web app" not "API executable"
+
+---
+
+## 4. Multi-Account Setup
+
+**What it adds**: Manage multiple Gmail accounts (personal, work, etc.) from one codebase.
+
+**Why you might want this**: Keep work and personal email processing separate while managing both from a single development environment.
 
 ### Prerequisites for Multi-Account
 
@@ -427,141 +585,6 @@ After running the script:
 
 Each email gets exactly one label to keep things simple and clear.
 
-## 🎉 Congratulations!
-
-You now have automated email labeling set up! Your Gmail will automatically organize new emails into helpful categories. You can stop here and enjoy your automated email management, or continue below for optional advanced features.
-
-## Advanced Features (Optional)
-
-### Automatic Scheduling
-
-To have the script run automatically every hour:
-
-1. In the Apps Script editor, select "installTrigger" from the function dropdown
-2. Click the "Run" button (▶️)
-3. Check the "Triggers" section in the left sidebar to confirm it was created
-
-**Why this is optional**: You can run the script manually anytime, but scheduling makes it truly automatic.
-
-### Interactive Web App Dashboard
-
-In addition to automatic email labeling, this system includes an **Interactive Web App Dashboard** for on-demand email summarization and archiving. This mobile-optimized interface allows you to:
-
-- Get AI-powered summaries of emails labeled with `summarize`
-- Archive processed emails with one tap
-- View email count status and links to source emails
-- Access from any device through a simple web interface
-
-#### Web App Features
-
-- **Works on phones and computers**: Touch-optimized interface for any device
-- **AI Summarization**: Get short summaries of long emails in newspaper style
-- **Email Count Accuracy**: Know exactly what will be archived before you confirm
-- **Source Email Links**: Direct links back to your Gmail threads
-- **Web Link Extraction**: Automatically finds and displays URLs from emails
-- **Dark Mode Support**: Automatically adapts to your device preferences
-
-#### Web App Setup
-
-**⚠️ Note**: This is an advanced feature. Complete the basic setup above first.
-
-For detailed web app setup instructions, see [docs/webapp-setup.md](docs/webapp-setup.md).
-
-**Quick Setup (Automated)**:
-```bash
-npm run deploy:personal   # or deploy:work
-```
-
-This command will:
-1. Upload your latest code to Apps Script
-2. Create or update the web app deployment maintaining consistent URLs
-3. Install triggers and **automatically display your web app URL** for bookmarking
-
-**Manual Setup Alternative**:
-1. In the Apps Script editor, click "Deploy" → "New deployment"
-2. Choose type: "Web app", Execute as: "Me", Access: "Only myself"
-3. Click "Deploy" and copy the web app URL
-4. Bookmark the URL for easy access
-
-**Getting Your Web App URL Anytime**:
-```bash
-npm run url:personal    # Get personal account web app URL
-npm run url:work        # Get work account web app URL
-npm run url:all         # Get all web app URLs
-```
-
-These commands show your current web app URLs and setup instructions.
-
-#### How to Use the Web App
-
-1. **Label emails for summarization**: Apply the `summarize` label to emails in Gmail
-2. **Open the web dashboard**: Visit your web app URL
-3. **Get Summary**: Tap "Get Summary" to process all emails with the `summarize` label
-4. **Review the summary**: Read the AI-generated consolidated summary with source links
-5. **Archive emails**: Tap "Archive X Emails" to remove labels and archive the processed emails
-
-**Pro Tip**: The web app is perfect for processing newsletters, long email threads, or multiple related emails at once.
-
-#### Web App Configuration
-
-You can customize the web app behavior with these Script Properties:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `WEBAPP_ENABLED` | `true` | Enable/disable web app functionality |
-| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process in web app per summary |
-
-### Email Summarizer Agent Configuration
-
-The Email Summarizer agent can be configured with these Script Properties:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `SUMMARIZER_ENABLED` | `true` | Enable/disable the Email Summarizer agent |
-| `SUMMARIZER_MAX_AGE_DAYS` | `7` | Maximum age of emails to include in summaries |
-| `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process per summary |
-| `SUMMARIZER_DESTINATION_EMAIL` | Your email | Email address to receive summaries |
-| `SUMMARIZER_DEBUG` | `false` | Enable detailed logging for the agent |
-| `SUMMARIZER_DRY_RUN` | `false` | Test mode for the agent (doesn't process emails) |
-
-**How the Email Summarizer Works:**
-1. **Daily Processing**: Runs automatically at 5 AM (configurable)
-2. **Smart Collection**: Finds emails with `summarize` label from the past 7 days
-3. **AI Summarization**: Generates Economist-style summaries with hyperlinks
-4. **Email Delivery**: Sends formatted HTML summaries to your configured email
-5. **Archive Management**: Relabels processed emails as `summarized` and archives them
-
-**Setting Up the Email Summarizer:**
-1. The agent is enabled by default after deployment
-2. Configure destination email if different from your main account
-3. Install triggers manually in Apps Script editor (select `installSummarizerTrigger` and run)
-4. Emails labeled `summarize` will be processed in the next daily run
-
-**Settings Details**:
-- **`WEBAPP_ENABLED`**: Set to `false` to completely disable web app features while keeping automatic labeling active
-- **`WEBAPP_MAX_EMAILS_PER_SUMMARY`**: Controls performance and readability by limiting emails per summary. Larger numbers may cause timeouts or very long summaries
-
-#### Web App Troubleshooting
-
-**🔍 Problem**: Web app shows "Web app functionality is disabled"
-- **Solution**: Set `WEBAPP_ENABLED=true` in Script Properties
-- **Solution**: Redeploy the web app if the setting was changed after deployment
-
-**🔍 Problem**: "No emails found with 'summarize' label"
-- **Solution**: Apply the `summarize` label to some emails in Gmail first
-- **Solution**: Verify the label exists and is spelled correctly (all lowercase)
-
-**🔍 Problem**: Web app times out during summarization
-- **Solution**: Reduce `WEBAPP_MAX_EMAILS_PER_SUMMARY` to a smaller number (try `10`)
-- **Solution**: Check that `DAILY_GEMINI_BUDGET` hasn't been exceeded
-
-**🔍 Problem**: Archive button doesn't work
-- **Solution**: Ensure you've generated a summary first before trying to archive
-- **Solution**: Check that emails still have the `summarize` label applied
-
-**🔍 Problem**: Web app URL not working
-- **Solution**: Redeploy the web app and get a new URL
-- **Solution**: Check that deployment type is set to "Web app" not "API executable"
 
 ### Customization (Advanced)
 
