@@ -501,41 +501,24 @@
             const archiveBtn = document.getElementById('archiveBtn');
             const archiveText = document.getElementById('archiveText');
 
-            // Comprehensive markdown-to-HTML renderer
-            function renderMarkdownToHtml(markdownText) {
-                let html = markdownText;
+            // Note: Markdown conversion now handled by backend via convertMarkdownForWebApp()
+            // This eliminates 25+ lines of client-side duplication and ensures consistent processing
 
-                // Convert headers (### format)
-                html = html.replace(/^### (.+)$/gm, '<h3 style="color: #007AFF; font-size: 16px; font-weight: 600; margin: 20px 0 10px 0; border-bottom: 2px solid #e9ecef; padding-bottom: 5px;">$1</h3>');
-
-                // Convert headers (## format)
-                html = html.replace(/^## (.+)$/gm, '<h2 style="color: #007AFF; font-size: 18px; font-weight: 600; margin: 25px 0 15px 0;">$1</h2>');
-
-                // Convert headers (# format)
-                html = html.replace(/^# (.+)$/gm, '<h1 style="color: #007AFF; font-size: 20px; font-weight: 600; margin: 30px 0 20px 0;">$1</h1>');
-
-                // Convert bold text
-                html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #007AFF;">$1</strong>');
-
-                // Convert italic text
-                html = html.replace(/\*(.*?)\*/g, '<em style="font-style: italic;">$1</em>');
-
-                // Convert markdown links to HTML with proper styling
-                html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: #007AFF; text-decoration: none; border-bottom: 1px solid #007AFF;">$1</a>');
-
-                // Convert line breaks to HTML
-                html = html.replace(/\n/g, '<br>');
-
-                // Convert bullet lists (simple implementation)
-                html = html.replace(/^- (.+)$/gm, '<li style="margin: 5px 0;">$1</li>');
-                html = html.replace(/(<li.*<\/li>)/s, '<ul style="margin: 10px 0; padding-left: 20px;">$1</ul>');
-
-                return html;
-            }
-
-            // Display the AI-generated summary with comprehensive markdown rendering
-            const formattedSummary = renderMarkdownToHtml(summaryData.summary);
-            summaryContent.innerHTML = formattedSummary;
+            // Display the AI-generated summary using backend markdown conversion
+            google.script.run
+                .withSuccessHandler(function(conversionResult) {
+                    if (conversionResult.success) {
+                        summaryContent.innerHTML = conversionResult.html;
+                    } else {
+                        // Fallback to plain text if conversion fails
+                        summaryContent.innerHTML = '<p>Error converting markdown: ' + conversionResult.error + '</p><pre>' + summaryData.summary + '</pre>';
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    // Fallback to plain text if backend call fails
+                    summaryContent.innerHTML = '<p>Error calling backend conversion service</p><pre>' + summaryData.summary + '</pre>';
+                })
+                .convertMarkdownForWebApp(summaryData.summary);
 
             // Email links are now integrated within the summary themes, so no separate section needed
 

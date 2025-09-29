@@ -35,6 +35,8 @@ function getTemplateAgentConfig_() {
     TEMPLATE_ENABLED: (props.getProperty('TEMPLATE_AGENT_ENABLED') || 'true').toLowerCase() === 'true',
     TEMPLATE_MAX_ITEMS: parseInt(props.getProperty('TEMPLATE_MAX_ITEMS') || '10', 10),
     TEMPLATE_DESTINATION: props.getProperty('TEMPLATE_DESTINATION') || Session.getActiveUser().getEmail(),
+    // Use shared utility pattern for agent configurations
+    // Example: TEMPLATE_CONFIG: getAgentConfig_('TEMPLATE', defaultConfig),
     // Add your agent's configuration options here
   };
 }
@@ -86,8 +88,10 @@ function templateAgentHandler(ctx) {
     return { status: 'ok', info: 'template agent processed thread' };
 
   } catch (error) {
-    ctx.log('templateAgent error: ' + error.toString());
-    return { status: 'error', info: error.toString() };
+    // Use shared utility for standardized error handling
+    const errorResult = standardErrorHandler_(error, 'templateAgent');
+    ctx.log('templateAgent error: ' + errorResult.message);
+    return { status: 'error', info: errorResult.message };
   }
 }
 
@@ -100,23 +104,12 @@ function templateAgentHandler(ctx) {
  * Agents manage their own trigger lifecycle
  */
 function installTemplateAgentTrigger() {
-  try {
-    // Clean up existing triggers first
-    deleteTemplateAgentTriggers_();
-
-    // Create new trigger (example: daily at 5 AM)
-    ScriptApp.newTrigger('runTemplateAgent')
-      .timeBased()
-      .everyDays(1)
-      .atHour(5)
-      .create();
-
+  // Use shared utility for trigger management
+  const result = createTimeTrigger_('runTemplateAgent', { type: 'daily', hour: 5 });
+  if (result.success) {
     console.log('Template agent trigger installed successfully');
-    return { success: true };
-  } catch (error) {
-    console.log('Error installing template agent trigger: ' + error.toString());
-    return { success: false, error: error.toString() };
   }
+  return result;
 }
 
 /**
@@ -135,7 +128,9 @@ function runTemplateAgent() {
 
     console.log('Template agent scheduled run completed');
   } catch (error) {
-    console.log('Template agent scheduled run error: ' + error.toString());
+    // Use shared utility for error handling
+    const errorResult = standardErrorHandler_(error, 'templateAgent scheduled run');
+    console.log(errorResult.message);
   }
 }
 
@@ -143,9 +138,8 @@ function runTemplateAgent() {
  * Remove all triggers for this agent
  */
 function deleteTemplateAgentTriggers_() {
-  ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === 'runTemplateAgent')
-    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  // Use shared utility for trigger cleanup
+  return deleteTriggersByFunction_('runTemplateAgent');
 }
 
 // ============================================================================

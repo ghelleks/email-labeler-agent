@@ -120,54 +120,8 @@ function generateSummaryFromEmails_(emails) {
   }
 }
 
-/**
- * Convert markdown formatting to HTML for email display
- * Handles headers, bold text, italic text, and links
- */
-function convertMarkdownToHtml_(markdownText) {
-  if (!markdownText) return '';
-
-  let html = markdownText;
-
-  // Convert headers (### Header -> <h3>Header</h3>)
-  html = html.replace(/^### (.+)$/gm, '<h3 style="color: #2c3e50; margin-top: 1.5em; margin-bottom: 0.5em; font-size: 18px;">$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2 style="color: #2c3e50; margin-top: 1.5em; margin-bottom: 0.5em; font-size: 20px;">$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1 style="color: #2c3e50; margin-top: 1.5em; margin-bottom: 0.5em; font-size: 22px;">$1</h1>');
-
-  // Convert bold text (**text** -> <strong>text</strong>)
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: bold;">$1</strong>');
-
-  // Convert italic text (*text* -> <em>text</em>)
-  html = html.replace(/\*([^*]+)\*/g, '<em style="font-style: italic;">$1</em>');
-
-  // Convert Sources sections to bulleted lists
-  // Pattern: **Sources:** [Link1](url1), [Link2](url2), [Link3](url3)
-  html = html.replace(/\*\*Sources:\*\*\s*(.+)/g, function(match, sourcesList) {
-    // Split the sources by commas and convert each to a list item
-    const sources = sourcesList.split(/,\s*(?=\[)/); // Split on comma followed by [
-    const listItems = sources.map(source => {
-      // Convert links in each source
-      const linkedSource = source.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3498db; text-decoration: none;">$1</a>');
-      return `<li style="margin: 0.3em 0;">${linkedSource.trim()}</li>`;
-    }).join('');
-
-    return `<strong style="font-weight: bold;">Sources:</strong><ul style="margin: 0.5em 0; padding-left: 1.5em;">${listItems}</ul>`;
-  });
-
-  // Convert remaining links ([text](url) -> <a href="url">text</a>)
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3498db; text-decoration: none;">$1</a>');
-
-  // Convert line breaks to HTML
-  html = html.replace(/\n\n/g, '</p><p style="margin: 1em 0;">');
-  html = html.replace(/\n/g, '<br>');
-
-  // Wrap in paragraph tags if not already wrapped
-  if (!html.startsWith('<')) {
-    html = '<p style="margin: 1em 0;">' + html + '</p>';
-  }
-
-  return html;
-}
+// Note: Markdown conversion now handled by shared utility in Utility.gs
+// This eliminates 44 lines of duplicate code and standardizes markdown processing
 
 /**
  * Send summary email to configured destination
@@ -184,12 +138,19 @@ function deliverSummaryEmail_(summaryText, sourceEmails) {
       };
     }
 
-    const currentDate = new Date().toLocaleDateString();
+    const currentDate = formatEmailDate_(new Date());
     // Fix emoji encoding issue by using plain text
     const subject = `Email Summary - ${currentDate}`;
 
-    // Convert markdown to HTML for proper email display
-    const htmlSummary = convertMarkdownToHtml_(summaryText);
+    // Convert markdown to HTML using shared utility with email styling
+    const conversionResult = convertMarkdownToHtml_(summaryText, 'email');
+    if (!conversionResult.success) {
+      return {
+        success: false,
+        error: 'Failed to convert markdown to HTML: ' + conversionResult.error
+      };
+    }
+    const htmlSummary = conversionResult.html;
 
     // Build HTML content with proper styling
     const htmlContent = `
@@ -405,55 +366,28 @@ function runEmailSummarizer() {
  * Agents manage their own trigger lifecycle
  */
 function installSummarizerTrigger() {
-  try {
-    // Clean up existing triggers first
-    deleteSummarizerTriggers_();
-
-    // Create new daily trigger at 5 AM
-    ScriptApp.newTrigger('runEmailSummarizer')
-      .timeBased()
-      .everyDays(1)
-      .atHour(5)
-      .create();
-
+  // Use shared utility for trigger management
+  const result = createTimeTrigger_('runEmailSummarizer', { type: 'daily', hour: 5 });
+  if (result.success) {
     console.log('Email Summarizer trigger installed successfully (daily at 5 AM)');
-    return { success: true, message: 'Daily trigger installed at 5 AM' };
-  } catch (error) {
-    const errorMsg = 'Error installing Email Summarizer trigger: ' + error.toString();
-    console.log(errorMsg);
-    return { success: false, error: errorMsg };
   }
+  return result;
 }
 
 /**
  * Remove all Email Summarizer triggers
  */
 function deleteSummarizerTriggers_() {
-  ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === 'runEmailSummarizer')
-    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  // Use shared utility for trigger cleanup
+  return deleteTriggersByFunction_('runEmailSummarizer');
 }
 
 /**
  * List Email Summarizer triggers for debugging
  */
 function listSummarizerTriggers() {
-  const triggers = ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === 'runEmailSummarizer');
-
-  if (triggers.length === 0) {
-    console.log('No Email Summarizer triggers installed');
-    return { triggers: [] };
-  }
-
-  console.log(`Found ${triggers.length} Email Summarizer trigger(s):`);
-  triggers.forEach((trigger, index) => {
-    const source = trigger.getTriggerSource();
-    const eventType = trigger.getEventType();
-    console.log(`  ${index + 1}. ${source} - ${eventType}`);
-  });
-
-  return { triggers: triggers.length };
+  // Use shared utility for trigger listing
+  return listTriggersByFunction_('runEmailSummarizer');
 }
 
 // ============================================================================

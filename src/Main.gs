@@ -39,13 +39,19 @@ function run() {
 }
 
 function installTrigger() {
-  deleteExistingTriggers_();
-  ScriptApp.newTrigger('run').timeBased().everyHours(1).create();
+  // Use shared utility for trigger management
+  const result = createTimeTrigger_('run', { type: 'hourly', interval: 1 });
+  if (!result.success) {
+    console.log('Failed to install trigger: ' + result.error);
+  }
+  return result;
 }
 
 function deleteTriggers() {
-  deleteExistingTriggers_();
+  // Use shared utility for trigger cleanup
+  const result = deleteTriggersByFunction_('run');
   console.log('All email processing triggers deleted');
+  return result;
 }
 
 function listTriggers() {
@@ -66,9 +72,8 @@ function listTriggers() {
 }
 
 function deleteExistingTriggers_() {
-  ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === 'run')
-    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  // Use shared utility for trigger management
+  return deleteTriggersByFunction_('run');
 }
 
 /**
@@ -132,10 +137,12 @@ function getWebAppUrl() {
       };
     }
   } catch (error) {
-    console.log('Error getting web app URL: ' + error.toString());
+    // Use shared utility for error handling
+    const errorResult = standardErrorHandler_(error, 'getWebAppUrl');
+    console.log(errorResult.message);
     return {
       success: false,
-      error: error.toString()
+      error: errorResult.message
     };
   }
 }
