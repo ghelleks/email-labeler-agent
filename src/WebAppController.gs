@@ -276,3 +276,39 @@ function getEmailStatus() {
     };
   }
 }
+
+/**
+ * Convert markdown to HTML using shared utility
+ * Called from frontend for consistent server-side markdown processing
+ */
+function convertMarkdownForWebApp(markdownText) {
+  try {
+    // Security: Verify user authentication
+    const userEmail = Session.getActiveUser().getEmail();
+    if (!userEmail) {
+      return {
+        success: false,
+        error: 'Authentication required. Please refresh and sign in.'
+      };
+    }
+
+    if (!markdownText || typeof markdownText !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid markdown text provided'
+      };
+    }
+
+    // Use shared utility with web styling
+    const result = convertMarkdownToHtml_(markdownText, 'web');
+
+    return result;
+
+  } catch (error) {
+    Logger.log('WebApp convertMarkdownForWebApp error: ' + error.toString());
+    return {
+      success: false,
+      error: 'Failed to convert markdown: ' + error.toString()
+    };
+  }
+}
