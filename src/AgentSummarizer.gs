@@ -3,6 +3,7 @@
  *
  * This agent implements the requirements from GitHub Issue #10:
  * - Retrieves all emails labeled "summarize"
+ * - Archives emails immediately when labeled (configurable)
  * - Generates summaries in "The Economist's World in Brief" style
  * - Delivers summaries via email with hyperlinks and source references
  * - Re-labels processed emails as "summarized" and archives them
@@ -12,7 +13,7 @@
  * - Self-contained: manages own config, labels, and triggers
  * - Uses generic service layer for Gmail operations
  * - Leverages existing AI infrastructure (LLMService, PromptBuilder)
- * - Configurable age limits and destination email
+ * - Configurable age limits, destination email, and archive behavior
  * - Full error handling and dry-run support
  */
 
@@ -36,6 +37,9 @@ function getSummarizerConfig_() {
 
     // Delivery configuration
     SUMMARIZER_DESTINATION_EMAIL: props.getProperty('SUMMARIZER_DESTINATION_EMAIL') || Session.getActiveUser().getEmail(),
+
+    // Archive behavior
+    SUMMARIZER_ARCHIVE_ON_LABEL: (props.getProperty('SUMMARIZER_ARCHIVE_ON_LABEL') || 'true').toLowerCase() === 'true',
 
     // Debugging and testing
     SUMMARIZER_DEBUG: (props.getProperty('SUMMARIZER_DEBUG') || 'false').toLowerCase() === 'true',
@@ -266,16 +270,31 @@ function summarizerAgentHandler(ctx) {
 
     ctx.log('Email Summarizer agent running for thread ' + ctx.threadId);
 
-    // This agent only processes individual emails as they are labeled
-    // The main bulk processing happens via scheduled triggers
-    // Here we just acknowledge the email was labeled for summarization
+    // Check if we should archive on label
+    if (config.SUMMARIZER_ARCHIVE_ON_LABEL) {
+      if (ctx.dryRun || config.SUMMARIZER_DRY_RUN) {
+        ctx.log('DRY RUN - Would archive email immediately after labeling');
+        return { status: 'ok', info: 'dry-run mode - email would be archived and queued for summarization' };
+      }
 
-    if (ctx.dryRun || config.SUMMARIZER_DRY_RUN) {
-      return { status: 'skip', info: 'dry-run mode - email queued for summarization' };
+      // Archive the email thread immediately
+      try {
+        ctx.thread.moveToArchive();
+        ctx.log('Email archived immediately after "summarize" label applied');
+        return { status: 'ok', info: 'email archived and queued for summarization' };
+      } catch (archiveError) {
+        ctx.log('Failed to archive email: ' + archiveError.toString());
+        return { status: 'error', info: 'failed to archive: ' + archiveError.toString() };
+      }
+    } else {
+      // Archive disabled - just queue for summarization
+      if (ctx.dryRun || config.SUMMARIZER_DRY_RUN) {
+        return { status: 'ok', info: 'dry-run mode - email queued for summarization' };
+      }
+
+      ctx.log('Email queued for next scheduled summarization run (archive-on-label disabled)');
+      return { status: 'ok', info: 'email queued for summarization' };
     }
-
-    ctx.log('Email queued for next scheduled summarization run');
-    return { status: 'ok', info: 'email queued for summarization' };
 
   } catch (error) {
     ctx.log('Email Summarizer agent error: ' + error.toString());

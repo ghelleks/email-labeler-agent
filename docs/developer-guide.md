@@ -48,6 +48,7 @@ Email Summarizer Agent (optional):
 - `SUMMARIZER_MAX_AGE_DAYS`: default `7` (days of emails to include)
 - `SUMMARIZER_MAX_EMAILS_PER_SUMMARY`: default `50` (max emails per summary)
 - `SUMMARIZER_DESTINATION_EMAIL`: default user's email (where to send summaries)
+- `SUMMARIZER_ARCHIVE_ON_LABEL`: default `true` (archive emails immediately when 'summarize' label applied)
 - `SUMMARIZER_DEBUG`: default `false` (verbose logging)
 - `SUMMARIZER_DRY_RUN`: default `false` (test mode)
 
@@ -350,8 +351,9 @@ function registerAgents() {
 
 The Email Summarizer (`src/AgentSummarizer.gs`) demonstrates the self-contained pattern:
 
-- **Independent Configuration**: Uses `SUMMARIZER_*` properties
+- **Independent Configuration**: Uses `SUMMARIZER_*` properties including `SUMMARIZER_ARCHIVE_ON_LABEL`
 - **Label Management**: Creates and manages `summarized` label
+- **Immediate Action**: Archives emails immediately when `summarize` label is applied (configurable)
 - **Scheduled Execution**: Runs daily via `runEmailSummarizer()` function
 - **Trigger Management**: Self-manages triggers with `installSummarizerTrigger()`
 - **Generic Services**: Uses `findEmailsByLabelWithAge_()`, `manageLabelTransition_()`, etc.

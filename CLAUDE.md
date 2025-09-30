@@ -150,6 +150,7 @@ Configuration uses Apps Script Script Properties accessible via the Apps Script 
 - `SUMMARIZER_MAX_AGE_DAYS`: Maximum age of emails to include in summaries (default: 7)
 - `SUMMARIZER_MAX_EMAILS_PER_SUMMARY`: Maximum emails to process per summary (default: 50)
 - `SUMMARIZER_DESTINATION_EMAIL`: Email address to receive summaries (default: user's email)
+- `SUMMARIZER_ARCHIVE_ON_LABEL`: Enable/disable immediate archiving when 'summarize' label is applied (default: true)
 - `SUMMARIZER_DEBUG`: Enable detailed logging for the agent (default: false)
 - `SUMMARIZER_DRY_RUN`: Test mode for the agent (default: false)
 

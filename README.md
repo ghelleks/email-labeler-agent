@@ -252,13 +252,14 @@ To have the script run automatically every hour:
 
 The **Email Summarizer** is an intelligent agent that:
 
+- **Archives immediately** when you apply the `summarize` label (configurable, enabled by default)
 - **Retrieves** emails with the `summarize` label from the past 7 days
 - **Generates** Economist-style summaries using AI
 - **Delivers** formatted HTML summaries via email with hyperlinks and source references
-- **Archives** processed emails after relabeling them as `summarized`
+- **Relabels** processed emails as `summarized` and archives them (if not already archived)
 - **Runs** on configurable daily triggers (default: 5 AM)
 
-This agent operates independently and requires no manual intervention once configured.
+This agent operates independently and requires no manual intervention once configured. By default, emails are archived immediately when you apply the `summarize` label, keeping your inbox clean while the scheduled summarization process finds them via the label.
 
 ### Email Summarizer Setup
 
@@ -284,6 +285,7 @@ Customize the summarizer with these Script Properties:
 | `SUMMARIZER_MAX_AGE_DAYS` | `7` | Maximum age of emails to include in summaries |
 | `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process per summary |
 | `SUMMARIZER_DESTINATION_EMAIL` | Your email | Email address to receive summaries |
+| `SUMMARIZER_ARCHIVE_ON_LABEL` | `true` | Archive emails immediately when `summarize` label is applied |
 | `SUMMARIZER_DEBUG` | `false` | Enable detailed logging for the agent |
 | `SUMMARIZER_DRY_RUN` | `false` | Test mode for the agent |
 
@@ -757,6 +759,7 @@ All settings are optional and have sensible defaults:
 | `SUMMARIZER_MAX_AGE_DAYS` | `7` | Maximum age of emails to include in summaries |
 | `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process per summary |
 | `SUMMARIZER_DESTINATION_EMAIL` | Your email | Email address to receive summaries |
+| `SUMMARIZER_ARCHIVE_ON_LABEL` | `true` | Archive emails immediately when `summarize` label is applied |
 | `SUMMARIZER_DEBUG` | `false` | Enable detailed logging for the agent |
 | `SUMMARIZER_DRY_RUN` | `false` | Test mode for the agent |
 

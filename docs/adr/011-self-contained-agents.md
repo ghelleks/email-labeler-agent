@@ -15,7 +15,8 @@ The original pluggable agents architecture (ADR-004) established a framework for
 
 The Email Summarizer agent specifically needs to:
 - Create and manage a "summarized" label for processed emails
-- Define agent-specific configuration options (max age, destination email, etc.)
+- Define agent-specific configuration options (max age, destination email, archive behavior, etc.)
+- Archive emails immediately upon labeling (configurable behavior)
 - Manage its own trigger lifecycle for scheduled execution
 - Operate independently without requiring core system modifications
 
@@ -38,6 +39,7 @@ function getAgentConfig_() {
   return {
     AGENT_MAX_AGE_DAYS: parseInt(props.getProperty('AGENT_MAX_AGE_DAYS') || '7', 10),
     AGENT_DESTINATION_EMAIL: props.getProperty('AGENT_DESTINATION_EMAIL') || Session.getActiveUser().getEmail(),
+    AGENT_ARCHIVE_ON_LABEL: (props.getProperty('AGENT_ARCHIVE_ON_LABEL') || 'true').toLowerCase() === 'true',
     AGENT_ENABLED: (props.getProperty('AGENT_ENABLED') || 'true').toLowerCase() === 'true'
   };
 }
@@ -52,6 +54,27 @@ function ensureAgentLabels_() {
 function installAgentTrigger() {
   deleteAgentTriggers_();
   ScriptApp.newTrigger('runAgent').timeBased().everyDays(1).atHour(5).create();
+}
+
+// Agent handles immediate actions when label is applied
+function agentHandler(ctx) {
+  const config = getAgentConfig_();
+  if (!config.AGENT_ENABLED) {
+    return { status: 'skip', info: 'agent disabled' };
+  }
+
+  // Immediate action: archive on label if configured
+  if (config.AGENT_ARCHIVE_ON_LABEL) {
+    if (ctx.dryRun) {
+      ctx.log('DRY RUN - Would archive email immediately');
+      return { status: 'ok', info: 'dry-run mode - would archive' };
+    }
+    ctx.thread.moveToArchive();
+    ctx.log('Email archived immediately after label applied');
+    return { status: 'ok', info: 'email archived and queued for processing' };
+  }
+
+  return { status: 'ok', info: 'email queued for processing' };
 }
 ```
 
