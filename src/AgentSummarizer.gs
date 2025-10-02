@@ -142,7 +142,8 @@ function deliverSummaryEmail_(summaryText, sourceEmails) {
       };
     }
 
-    const currentDate = formatEmailDate_(new Date());
+    const dateResult = formatEmailDate_(new Date());
+    const currentDate = dateResult && dateResult.success ? dateResult.date : new Date().toISOString().slice(0, 10);
     // Fix emoji encoding issue by using plain text
     const subject = `Email Summary - ${currentDate}`;
 
