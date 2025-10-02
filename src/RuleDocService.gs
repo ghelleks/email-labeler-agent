@@ -1,115 +1,60 @@
+/**
+ * Fetch rule document text for email labeling
+ *
+ * @deprecated Use KnowledgeService.fetchDocument_() or fetchLabelingKnowledge_() instead
+ *
+ * This function is maintained for backward compatibility with existing code.
+ * It wraps the new KnowledgeService but maintains the old behavior:
+ * - Returns plain text (not structured object)
+ * - Returns default rules if not configured (differs from KnowledgeService fail-fast)
+ *
+ * Migration path:
+ * - Old: const rulesText = getRuleText_(cfg.RULE_DOC_URL);
+ * - New: const knowledge = fetchLabelingKnowledge_({ docUrl: cfg.LABEL_KNOWLEDGE_DOC_URL });
+ *
+ * @param {string} docIdOrUrl - Document ID or URL (RULE_DOC_URL/RULE_DOC_ID)
+ * @return {string} Rule document text or default rules
+ */
 function getRuleText_(docIdOrUrl) {
-  const debug = PropertiesService.getScriptProperties().getProperty('DEBUG') === 'true';
+  const cfg = getConfig_();
 
-  if (!docIdOrUrl) {
-    if (debug) {
-      console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'no-doc-id-or-url-provided' }, null, 2));
-    }
-    return getDefaultPolicyText_();
+  // Log deprecation warning
+  if (cfg.DEBUG === 'true') {
+    console.log('DEPRECATION WARNING: getRuleText_() is deprecated. ' +
+                'Use KnowledgeService.fetchDocument_() or fetchLabelingKnowledge_() instead. ' +
+                'See CLAUDE.md for migration guide.');
   }
 
-  // User explicitly specified a rule document - we should error if it fails
-
-  // Extract Doc ID from URL variants or accept raw ID
-  var docId = docIdOrUrl;
-  if (/^https?:\/\//i.test(docIdOrUrl)) {
-    var m = docIdOrUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/) ||
-            docIdOrUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) ||
-            docIdOrUrl.match(/id=([a-zA-Z0-9_-]+)/) ||
-            docIdOrUrl.match(/\/([a-zA-Z0-9_-]+)\/edit/);
-    docId = m && m[1] ? m[1] : null;
-    if (debug) {
-      console.log(JSON.stringify({ urlParsing: docId ? 'success' : 'failed', originalUrl: docIdOrUrl, extractedId: docId }, null, 2));
-    }
-  }
-
-  if (!docId) {
-    const errorMsg = `Failed to extract document ID from rule document URL: "${docIdOrUrl}". ` +
-      `Please check that RULE_DOC_URL or RULE_DOC_ID contains a valid Google Docs URL or document ID. ` +
-      `Expected format: https://docs.google.com/document/d/DOCUMENT_ID/edit or just the document ID.`;
-    throw new Error(errorMsg);
-  }
-
+  // Use new KnowledgeService
   try {
-    // Use original working Google Docs feeds API URL format
-    const exportUrl = 'https://docs.google.com/feeds/download/documents/export/Export?exportFormat=markdown&id=' + encodeURIComponent(docId);
-
-    if (debug) {
-      console.log(JSON.stringify({
-        ruleDocSource: 'docs-feeds-api',
-        docId: docId,
-        exportUrl: exportUrl
-      }, null, 2));
-    }
-
-    const response = UrlFetchApp.fetch(exportUrl, {
-      headers: {
-        'Authorization': 'Bearer ' + ScriptApp.getOAuthToken()
-      },
-      followRedirects: true,
-      muteHttpExceptions: true
+    const knowledge = fetchDocument_(docIdOrUrl, {
+      propertyName: 'RULE_DOC_URL'
     });
 
-    if (response.getResponseCode() !== 200) {
-      const errorMsg = `Failed to fetch rule document (HTTP ${response.getResponseCode()}): ${response.getContentText()}. ` +
-        `Document ID: ${docId}. Please check that the document exists and is accessible.`;
-      throw new Error(errorMsg);
+    // Maintain backward compatibility: return default rules if not configured
+    if (!knowledge.configured) {
+      if (cfg.DEBUG === 'true') {
+        console.log(JSON.stringify({ ruleDocSource: 'default', reason: 'no-doc-id-or-url-provided' }, null, 2));
+      }
+      return getDefaultPolicyText_();
     }
 
-    const content = response.getContentText();
-
-    if (!content || !content.trim()) {
-      const errorMsg = `Rule document is empty (ID: ${docId}). ` +
-        `Please add content to the document or remove RULE_DOC_URL/RULE_DOC_ID to use default rules.`;
-      throw new Error(errorMsg);
-    }
-
-    if (debug) {
+    // Return plain text (not structured object) for backward compatibility
+    if (cfg.DEBUG === 'true') {
       console.log(JSON.stringify({
-        ruleDocSuccess: true,
-        contentLength: content.length,
-        contentPreview: content.substring(0, 200) + (content.length > 200 ? '...' : '')
+        ruleDocSource: 'knowledge-service',
+        contentLength: knowledge.knowledge.length,
+        estimatedTokens: knowledge.metadata.estimatedTokens,
+        contentPreview: knowledge.knowledge.substring(0, 200) + (knowledge.knowledge.length > 200 ? '...' : '')
       }, null, 2));
     }
 
-    return content;
+    return knowledge.knowledge;
 
   } catch (e) {
-    if (e.message && e.message.includes('Rule document is empty')) {
-      // Re-throw our custom empty document errors
-      throw e;
-    }
-
-    if (e.message && e.message.includes('Failed to fetch rule document')) {
-      // Re-throw our custom fetch errors (includes HTTP status codes)
-      throw e;
-    }
-
-    // Handle UrlFetch and authorization errors
-    const errorMessage = e && e.toString ? e.toString() : String(e);
-
-    if (errorMessage.includes('Request failed') || errorMessage.includes('Exception: Request failed')) {
-      const errorMsg = `Unable to fetch rule document (ID: ${docId}). ` +
-        `The document may not exist, may be private, or you may lack permission to access it. ` +
-        `Please verify the document ID in RULE_DOC_URL/RULE_DOC_ID, or remove it to use default rules.`;
-      throw new Error(errorMsg);
-    }
-
-    if (errorMessage.includes('Authorization') || errorMessage.includes('authentication')) {
-      const errorMsg = `Authorization error accessing rule document (ID: ${docId}). ` +
-        `Please ensure this Apps Script project has permission to access Google Docs. ` +
-        `Try running any function in the Apps Script editor to refresh authorization, ` +
-        `or remove RULE_DOC_URL/RULE_DOC_ID to use default rules.`;
-      throw new Error(errorMsg);
-    }
-
-    // Other URL fetch errors
-    const errorMsg = `Error fetching rule document via Google Docs export (ID: ${docId}): ${errorMessage}. ` +
-      `Please check that the document exists and is accessible, or remove RULE_DOC_URL/RULE_DOC_ID to use default rules.`;
-    if (debug) {
-      console.error('Full error details:', e);
-    }
-    throw new Error(errorMsg);
+    // KnowledgeService throws errors when document is configured but inaccessible
+    // Re-throw with original error message for backward compatibility
+    throw e;
   }
 }
 

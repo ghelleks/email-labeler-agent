@@ -113,10 +113,11 @@ The `deploy:[account]` commands attempt automated trigger installation but may f
 - **Main.gs**: Entry point that orchestrates the email processing pipeline + web app URL utilities
 - **Organizer.gs**: Applies categorization results and manages Gmail labels
 - **LLMService.gs**: Handles Gemini AI integration with dual authentication (API key or Vertex AI)
+- **KnowledgeService.gs**: Unified knowledge management for fetching Google Drive documents and injecting into AI prompts
 - **Agents.gs**: Pluggable agent system for extensible email processing
 - **GmailService.gs**: Gmail API operations, thread management, and generic service functions
 - **Config.gs**: Configuration management using Apps Script Properties
-- **RuleDocService.gs**: Integration with Google Drive for classification rules
+- **RuleDocService.gs**: Integration with Google Drive for classification rules (deprecated, use KnowledgeService)
 - **WebAppController.gs**: Web app entry point and API orchestration for interactive dashboard
 - **WebApp.html**: Mobile-optimized HTML interface for on-demand email summarization
 - **AgentSummarizer.gs**: Self-contained Email Summarizer agent with independent lifecycle management
@@ -154,6 +155,28 @@ Configuration uses Apps Script Script Properties accessible via the Apps Script 
 - `SUMMARIZER_DEBUG`: Enable detailed logging for the agent (default: false)
 - `SUMMARIZER_DRY_RUN`: Test mode for the agent (default: false)
 
+#### KnowledgeService Configuration
+The KnowledgeService provides unified knowledge management for AI prompts by fetching Google Drive documents.
+
+**Core Configuration:**
+- `KNOWLEDGE_CACHE_DURATION_MINUTES`: Cache duration for fetched documents (default: 30)
+- `KNOWLEDGE_DEBUG`: Enable detailed logging for document fetching (default: false)
+- `KNOWLEDGE_LOG_SIZE_WARNINGS`: Enable soft warnings at 50% and 90% of model token capacity (default: true)
+
+**Email Labeling Knowledge:**
+- `LABEL_KNOWLEDGE_DOC_URL`: Single document with core labeling rules (Google Docs URL or ID)
+- `LABEL_KNOWLEDGE_FOLDER_URL`: Folder with additional context documents (Google Drive folder URL or ID)
+- `LABEL_KNOWLEDGE_MAX_DOCS`: Maximum documents to fetch from folder (default: 5)
+
+**Reply Drafting Knowledge** (future):
+- `REPLY_DRAFTER_INSTRUCTIONS_URL`: Document with drafting style/guidelines (Google Docs URL or ID)
+- `REPLY_DRAFTER_CONTEXT_FOLDER_URL`: Folder with context documents (Google Drive folder URL or ID)
+- `REPLY_DRAFTER_CONTEXT_MAX_DOCS`: Maximum documents from folder (default: 5)
+
+**Legacy Configuration** (deprecated):
+- `RULE_DOC_URL`: Old email labeling rules document (use `LABEL_KNOWLEDGE_DOC_URL` instead)
+- `RULE_DOC_ID`: Old email labeling rules document (use `LABEL_KNOWLEDGE_DOC_URL` instead)
+
 ## Development Patterns
 
 ### Adding New Agent Modules
@@ -181,6 +204,239 @@ Use these functions for common operations:
 - `archiveEmailsByIds_()`: Batch email archiving
 - `sendFormattedEmail_()`: Send formatted HTML emails
 
+### KnowledgeService: Unified Knowledge Management
+
+The KnowledgeService provides centralized knowledge management for AI-powered features by fetching Google Drive documents and injecting them into prompts.
+
+#### Key Features
+
+**No Artificial Limits:**
+- Trusts Gemini's 1M token capacity (~750K words)
+- No hard character limits on knowledge documents
+- Soft warnings at 50% and 90% of model capacity
+- Token utilization transparency in all metadata responses
+
+**Smart Caching:**
+- Apps Script Cache Service with 30-minute TTL (configurable)
+- Individual document caching reduces Drive API quota usage
+- Automatic cache invalidation for fresh data
+- Bypass cache with `skipCache` option when needed
+
+**Fail-Fast Error Handling:**
+- If knowledge not configured: gracefully proceed without it
+- If knowledge configured but inaccessible: throw actionable error with remediation steps
+- No silent fallbacks - explicit configuration means explicit intent
+
+**Token Transparency:**
+- Every response includes token estimates and utilization percentage
+- Metadata shows model capacity and current usage
+- Debug logging shows token counts and content previews
+
+#### Core Functions
+
+**Single Document Fetching:**
+```javascript
+const knowledge = fetchDocument_(docIdOrUrl, {
+  propertyName: 'LABEL_KNOWLEDGE_DOC_URL',  // For error messages
+  skipCache: false                           // Optional: bypass cache
+});
+
+// Returns:
+// {
+//   configured: true,
+//   knowledge: "document content...",
+//   metadata: {
+//     chars: 5432,
+//     estimatedTokens: 1358,
+//     source: { name: "My Rules", url: "https://..." }
+//   }
+// }
+```
+
+**Folder Fetching (Multiple Documents):**
+```javascript
+const knowledge = fetchFolder_(folderIdOrUrl, {
+  propertyName: 'LABEL_KNOWLEDGE_FOLDER_URL',
+  maxDocs: 5,                                 // Limit documents fetched
+  skipCache: false
+});
+
+// Returns:
+// {
+//   configured: true,
+//   knowledge: "=== Doc1 ===\ncontent...\n\n=== Doc2 ===\ncontent...",
+//   metadata: {
+//     docCount: 3,
+//     totalChars: 12000,
+//     estimatedTokens: 3000,
+//     modelLimit: 1048576,
+//     utilizationPercent: "0.3%",
+//     sources: [
+//       { name: "Doc1", chars: 4000, url: "https://..." },
+//       { name: "Doc2", chars: 8000, url: "https://..." }
+//     ]
+//   }
+// }
+```
+
+**High-Level Knowledge Fetchers:**
+```javascript
+// Email labeling knowledge (combines doc + folder)
+const labelKnowledge = fetchLabelingKnowledge_({
+  docUrl: cfg.LABEL_KNOWLEDGE_DOC_URL,
+  folderUrl: cfg.LABEL_KNOWLEDGE_FOLDER_URL,
+  maxDocs: parseInt(cfg.LABEL_KNOWLEDGE_MAX_DOCS || '5')
+});
+
+// Reply drafting knowledge (future)
+const replyKnowledge = fetchReplyKnowledge_({
+  instructionsUrl: cfg.REPLY_DRAFTER_INSTRUCTIONS_URL,
+  contextFolderUrl: cfg.REPLY_DRAFTER_CONTEXT_FOLDER_URL,
+  maxDocs: parseInt(cfg.REPLY_DRAFTER_CONTEXT_MAX_DOCS || '5')
+});
+```
+
+#### Usage Examples
+
+**Example 1: Single Document Configuration**
+```javascript
+// In Apps Script Properties:
+// LABEL_KNOWLEDGE_DOC_URL = https://docs.google.com/document/d/abc123/edit
+
+const cfg = getConfig_();
+const knowledge = fetchLabelingKnowledge_({
+  docUrl: cfg.LABEL_KNOWLEDGE_DOC_URL,
+  folderUrl: null
+});
+
+if (knowledge.configured) {
+  // Use knowledge.knowledge in AI prompt
+  console.log(`Loaded ${knowledge.metadata.estimatedTokens} tokens`);
+  console.log(`Utilization: ${knowledge.metadata.utilizationPercent}`);
+}
+```
+
+**Example 2: Folder Configuration**
+```javascript
+// In Apps Script Properties:
+// LABEL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/xyz789
+// LABEL_KNOWLEDGE_MAX_DOCS = 10
+
+const cfg = getConfig_();
+const knowledge = fetchLabelingKnowledge_({
+  docUrl: null,
+  folderUrl: cfg.LABEL_KNOWLEDGE_FOLDER_URL,
+  maxDocs: parseInt(cfg.LABEL_KNOWLEDGE_MAX_DOCS || '5')
+});
+
+if (knowledge.configured) {
+  console.log(`Loaded ${knowledge.metadata.docCount} documents`);
+  console.log(`Total: ${knowledge.metadata.estimatedTokens} tokens`);
+  knowledge.metadata.sources.forEach(src => {
+    console.log(`  - ${src.name}: ${src.chars} chars`);
+  });
+}
+```
+
+**Example 3: Combined Document + Folder**
+```javascript
+// In Apps Script Properties:
+// LABEL_KNOWLEDGE_DOC_URL = https://docs.google.com/document/d/abc123/edit
+// LABEL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/xyz789
+// LABEL_KNOWLEDGE_MAX_DOCS = 5
+
+const cfg = getConfig_();
+const knowledge = fetchLabelingKnowledge_({
+  docUrl: cfg.LABEL_KNOWLEDGE_DOC_URL,
+  folderUrl: cfg.LABEL_KNOWLEDGE_FOLDER_URL,
+  maxDocs: parseInt(cfg.LABEL_KNOWLEDGE_MAX_DOCS || '5')
+});
+
+// Document content appears first, then folder contents
+// Metadata aggregates both sources
+```
+
+**Example 4: Not Configured (Graceful Degradation)**
+```javascript
+// No LABEL_KNOWLEDGE_DOC_URL or LABEL_KNOWLEDGE_FOLDER_URL configured
+
+const knowledge = fetchLabelingKnowledge_({
+  docUrl: null,
+  folderUrl: null
+});
+
+console.log(knowledge.configured);  // false
+// AI proceeds without additional knowledge, uses only built-in instructions
+```
+
+**Example 5: Error Handling**
+```javascript
+try {
+  const knowledge = fetchDocument_('invalid-doc-id', {
+    propertyName: 'LABEL_KNOWLEDGE_DOC_URL'
+  });
+} catch (e) {
+  // Error message includes:
+  // - What failed (document ID)
+  // - Why it failed (permissions, not found)
+  // - Configuration property name
+  // - Remediation steps ("remove this property to proceed without knowledge")
+  console.error(e.message);
+}
+```
+
+#### Token Warning System
+
+The KnowledgeService automatically logs warnings when knowledge size approaches model limits:
+
+**Soft Warning (50-90% capacity):**
+```
+⚠️  Knowledge size warning: ~524288 tokens (50.0% of model capacity).
+Approaching model limit of 1048576 tokens.
+```
+
+**Critical Warning (>90% capacity):**
+```
+🚨 Knowledge size critical: ~943718 tokens (90.0% of model capacity).
+Request may fail. Strongly recommend reducing knowledge documents
+by lowering KNOWLEDGE_MAX_DOCS or removing some documents.
+```
+
+To disable warnings, set `KNOWLEDGE_LOG_SIZE_WARNINGS=false` in Script Properties.
+
+#### Migration from Legacy RuleDocService
+
+**Old Pattern (deprecated):**
+```javascript
+const rulesText = getRuleText_(cfg.RULE_DOC_URL);
+// Returns plain string or default rules if not configured
+```
+
+**New Pattern (recommended):**
+```javascript
+const knowledge = fetchLabelingKnowledge_({
+  docUrl: cfg.LABEL_KNOWLEDGE_DOC_URL,
+  folderUrl: cfg.LABEL_KNOWLEDGE_FOLDER_URL,
+  maxDocs: 5
+});
+
+if (knowledge.configured) {
+  const rulesText = knowledge.knowledge;
+  console.log(`Token usage: ${knowledge.metadata.utilizationPercent}`);
+} else {
+  // Use default rules or proceed without knowledge
+}
+```
+
+**Why Migrate:**
+- Access to folder-based knowledge (multiple documents)
+- Token transparency and utilization metrics
+- Smart caching reduces API quota usage
+- Consistent error handling across all features
+- Future-ready for explicit caching and grounding features
+
+The legacy `getRuleText_()` function remains available for backward compatibility but logs deprecation warnings when `DEBUG=true`.
+
 ### Classification Labels
 The system uses exactly four core labels (ADR-003):
 - `reply_needed`: Emails requiring personal response
@@ -199,10 +455,22 @@ Self-contained agents may create and manage additional labels:
 - Budget tracking prevents quota overruns with graceful degradation
 
 ### Google Drive Integration
-The system can load classification rules from Google Drive documents:
-- Configure `RULE_DOC_URL` or `RULE_DOC_ID` in Script Properties
+
+**Modern Approach (KnowledgeService):**
+The KnowledgeService provides unified knowledge management for AI prompts:
+- Configure `LABEL_KNOWLEDGE_DOC_URL` for single document with core rules
+- Configure `LABEL_KNOWLEDGE_FOLDER_URL` for folder with multiple context documents
+- Both document and folder can be used together (document appears first in combined knowledge)
+- Supports both Google Docs URLs and document/folder IDs
+- Smart caching reduces Drive API quota usage
+- Token transparency shows utilization percentage
+- Fail-fast errors with actionable remediation steps
+
+**Legacy Approach (deprecated):**
+- Configure `RULE_DOC_URL` or `RULE_DOC_ID` in Script Properties (deprecated, use KnowledgeService)
 - Rules document provides examples and context for AI classification
 - Fallback to built-in rules if document unavailable
+- Migration path: use `fetchLabelingKnowledge_()` instead of `getRuleText_()`
 
 ## Key Architectural Decisions
 
@@ -272,4 +540,19 @@ Refer to `docs/adr/` for complete context:
 **🔍 Problem**: Authentication issues with specific account
 - **Solution**: Check authentication status with `npm run switch:status`
 - **Solution**: Re-authenticate problematic account: `clasp --user [account] login`
+
+**🔍 Problem**: KnowledgeService failing to fetch documents
+- **Solution**: Verify document/folder URL is correct format in Script Properties
+- **Solution**: Check document/folder permissions (must have at least Viewer access)
+- **Solution**: Enable `KNOWLEDGE_DEBUG=true` to see detailed fetch logs
+- **Solution**: If configured but want to proceed without knowledge, remove the property
+- **Solution**: Check execution logs for token warnings (may be hitting capacity limits)
+
+**🔍 Problem**: Knowledge documents too large
+- **Solution**: Monitor soft warnings at 50% capacity (informational)
+- **Solution**: Critical warnings at 90% capacity mean action needed
+- **Solution**: Reduce `LABEL_KNOWLEDGE_MAX_DOCS` or `REPLY_DRAFTER_CONTEXT_MAX_DOCS`
+- **Solution**: Remove some documents from knowledge folder
+- **Solution**: Split large documents into smaller focused documents
+- **Solution**: Set `KNOWLEDGE_LOG_SIZE_WARNINGS=false` to disable warnings (not recommended)
 - This project doesn't require test functions that are not part of the regular execution.
