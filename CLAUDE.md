@@ -114,12 +114,14 @@ The `deploy:[account]` commands attempt automated trigger installation but may f
 - **Organizer.gs**: Applies categorization results and manages Gmail labels
 - **LLMService.gs**: Handles Gemini AI integration with dual authentication (API key or Vertex AI)
 - **KnowledgeService.gs**: Unified knowledge management for fetching Google Drive documents and injecting into AI prompts
+- **PromptBuilder.gs**: Centralized prompt construction for all AI operations (categorization, summarization, reply drafting)
 - **Agents.gs**: Pluggable agent system for extensible email processing
 - **GmailService.gs**: Gmail API operations, thread management, and generic service functions
 - **Config.gs**: Configuration management using Apps Script Properties
 - **RuleDocService.gs**: Integration with Google Drive for classification rules (deprecated, use KnowledgeService)
 - **WebAppController.gs**: Web app entry point and API orchestration for interactive dashboard
 - **WebApp.html**: Mobile-optimized HTML interface for on-demand email summarization
+- **AgentReplyDrafter.gs**: Self-contained Reply Drafter agent for automatic draft replies
 - **AgentSummarizer.gs**: Self-contained Email Summarizer agent with independent lifecycle management
 - **AgentTemplate.gs**: Enhanced agent template demonstrating self-contained patterns
 
@@ -146,6 +148,14 @@ Configuration uses Apps Script Script Properties accessible via the Apps Script 
 - `WEBAPP_ENABLED`: Enable/disable web app functionality (default: true)
 - `WEBAPP_MAX_EMAILS_PER_SUMMARY`: Maximum emails to process in web app per summary (default: 25)
 
+#### Reply Drafter Agent Configuration
+- `REPLY_DRAFTER_ENABLED`: Enable/disable Reply Drafter agent (default: true)
+- `REPLY_DRAFTER_INSTRUCTIONS_URL`: Google Docs URL with drafting style/methodology (optional)
+- `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL`: Google Drive folder URL with contextual examples (optional)
+- `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS`: Maximum documents to fetch from knowledge folder (default: 5)
+- `REPLY_DRAFTER_DEBUG`: Enable detailed logging for the agent (default: false)
+- `REPLY_DRAFTER_DRY_RUN`: Test mode for the agent (default: false)
+
 #### Email Summarizer Agent Configuration
 - `SUMMARIZER_ENABLED`: Enable/disable Email Summarizer agent (default: true)
 - `SUMMARIZER_MAX_AGE_DAYS`: Maximum age of emails to include in summaries (default: 7)
@@ -168,10 +178,10 @@ The KnowledgeService provides unified knowledge management for AI prompts by fet
 - `LABEL_KNOWLEDGE_FOLDER_URL`: Folder with additional context documents (Google Drive folder URL or ID)
 - `LABEL_KNOWLEDGE_MAX_DOCS`: Maximum documents to fetch from folder (default: 5)
 
-**Reply Drafting Knowledge** (future):
+**Reply Drafting Knowledge**:
 - `REPLY_DRAFTER_INSTRUCTIONS_URL`: Document with drafting style/guidelines (Google Docs URL or ID)
-- `REPLY_DRAFTER_CONTEXT_FOLDER_URL`: Folder with context documents (Google Drive folder URL or ID)
-- `REPLY_DRAFTER_CONTEXT_MAX_DOCS`: Maximum documents from folder (default: 5)
+- `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL`: Folder with context documents (Google Drive folder URL or ID)
+- `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS`: Maximum documents from folder (default: 5)
 
 **Legacy Configuration** (deprecated):
 - `RULE_DOC_URL`: Old email labeling rules document (use `LABEL_KNOWLEDGE_DOC_URL` instead)
@@ -186,10 +196,36 @@ The system supports two agent architecture patterns:
 For complex agents that need independent lifecycle management:
 1. Create agent file (e.g., `AgentMyFeature.gs`) with complete self-management
 2. Implement configuration management with agent-specific property keys
-3. Handle label creation and management within the agent
-4. Manage own trigger lifecycle for scheduled execution
+3. Handle label creation and management within the agent (if needed)
+4. Manage own trigger lifecycle for scheduled execution (if needed)
 5. Use generic service functions from `GmailService.gs` for common operations
-6. Register with `AGENT_MODULES` pattern for framework integration
+6. **Self-register with `AGENT_MODULES.push()` pattern** - no core system changes needed
+
+**Self-Registration Pattern**:
+```javascript
+// At the end of your agent file (e.g., AgentReplyDrafter.gs)
+if (typeof AGENT_MODULES === 'undefined') {
+  AGENT_MODULES = [];
+}
+
+AGENT_MODULES.push(function(api) {
+  api.register(
+    'label_name',           // Label to trigger on
+    'AgentName',            // Agent name for logging
+    handlerFunction_,       // Handler function
+    {
+      idempotentKey: function(ctx) { return 'agentName:' + ctx.threadId; },
+      runWhen: 'afterLabel', // Run after labeling
+      timeoutMs: 30000,      // Soft timeout guidance
+      enabled: true          // Enabled by default
+    }
+  );
+});
+```
+
+**Examples of Self-Contained Agents**:
+- **AgentReplyDrafter.gs**: Generates draft replies for `reply_needed` emails (no trigger, runs in pipeline)
+- **AgentSummarizer.gs**: Daily email summaries for `summarize` label (has own trigger)
 
 #### Traditional Agents (Simple Cases)
 For simple post-processing agents:
@@ -288,11 +324,11 @@ const labelKnowledge = fetchLabelingKnowledge_({
   maxDocs: parseInt(cfg.LABEL_KNOWLEDGE_MAX_DOCS || '5')
 });
 
-// Reply drafting knowledge (future)
+// Reply drafting knowledge
 const replyKnowledge = fetchReplyKnowledge_({
   instructionsUrl: cfg.REPLY_DRAFTER_INSTRUCTIONS_URL,
-  contextFolderUrl: cfg.REPLY_DRAFTER_CONTEXT_FOLDER_URL,
-  maxDocs: parseInt(cfg.REPLY_DRAFTER_CONTEXT_MAX_DOCS || '5')
+  knowledgeFolderUrl: cfg.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL,
+  maxDocs: parseInt(cfg.REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS || '5')
 });
 ```
 
@@ -449,6 +485,8 @@ Self-contained agents may create and manage additional labels:
 - `summarized`: Emails processed by the Email Summarizer agent (archived)
 - Custom agent labels as needed (agents manage their own label lifecycle)
 
+**Note**: The Reply Drafter agent does not create additional labels - it operates solely on emails labeled `reply_needed` by the core classification system.
+
 ### Error Handling
 - All configuration errors should be descriptive and actionable
 - Use `cfg.DEBUG` for detailed logging during development
@@ -527,6 +565,13 @@ Refer to `docs/adr/` for complete context:
 - **Solution**: For Email Summarizer, use `installSummarizerTrigger` function
 - **Solution**: Automated `clasp run` trigger installation is unreliable due to permissions
 
+**🔍 Problem**: Reply Drafter not creating drafts
+- **Solution**: Verify `REPLY_DRAFTER_ENABLED=true` in Script Properties
+- **Solution**: Check that emails have `reply_needed` label applied by core classification
+- **Solution**: Enable `REPLY_DRAFTER_DEBUG=true` for detailed logging
+- **Solution**: Test with `REPLY_DRAFTER_DRY_RUN=true` to verify agent runs without draft creation
+- **Solution**: Check execution logs for idempotency messages (draft may already exist)
+
 **🔍 Problem**: Email Summarizer not working
 - **Solution**: Verify `SUMMARIZER_ENABLED=true` in Script Properties
 - **Solution**: Install summarizer trigger with `installSummarizerTrigger` function
@@ -551,8 +596,14 @@ Refer to `docs/adr/` for complete context:
 **🔍 Problem**: Knowledge documents too large
 - **Solution**: Monitor soft warnings at 50% capacity (informational)
 - **Solution**: Critical warnings at 90% capacity mean action needed
-- **Solution**: Reduce `LABEL_KNOWLEDGE_MAX_DOCS` or `REPLY_DRAFTER_CONTEXT_MAX_DOCS`
+- **Solution**: Reduce `LABEL_KNOWLEDGE_MAX_DOCS` or `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS`
 - **Solution**: Remove some documents from knowledge folder
 - **Solution**: Split large documents into smaller focused documents
 - **Solution**: Set `KNOWLEDGE_LOG_SIZE_WARNINGS=false` to disable warnings (not recommended)
+
+**🔍 Problem**: Reply Drafter drafts have poor quality
+- **Solution**: Customize with `REPLY_DRAFTER_INSTRUCTIONS_URL` to define tone and style
+- **Solution**: Add example drafts to `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL` for AI to learn from
+- **Solution**: Enable `REPLY_DRAFTER_DEBUG=true` to see token utilization and knowledge loading
+- **Solution**: Review generated drafts and refine instructions document based on patterns
 - This project doesn't require test functions that are not part of the regular execution.

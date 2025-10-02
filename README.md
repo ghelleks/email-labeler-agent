@@ -6,7 +6,7 @@ Automatically organize your Gmail inbox with AI-powered email labeling. Your ema
 
 This system automatically analyzes your incoming Gmail and sorts it into four actionable categories:
 
-- **`reply_needed`** — Emails requiring your personal response (questions, meeting requests, urgent items)
+- **`reply_needed`** — Emails requiring your personal response (questions, meeting requests, urgent items) — automatically creates draft replies with AI
 - **`review`** — Informational emails to read (updates, newsletters, FYI messages)
 - **`todo`** — Action items and tasks (assignments, deadlines, follow-ups)
 - **`summarize`** — Long emails that benefit from AI summarization
@@ -112,6 +112,20 @@ Your emails will now be labeled automatically every hour without your computer n
 
 The core email labeling is complete! These advanced features are optional add-ons:
 
+### Reply Drafter Agent
+
+**What it adds**: Automatic draft replies for emails labeled `reply_needed`
+
+Perfect for generating professional, context-aware draft responses to questions, meeting requests, and routine correspondence. AI analyzes the full email thread and creates drafts you can review and send.
+
+**Quick configuration example**:
+```
+REPLY_DRAFTER_ENABLED = true
+REPLY_DRAFTER_INSTRUCTIONS_URL = https://docs.google.com/document/d/YOUR_DOC_ID/edit
+```
+
+[Reply Drafter Documentation →](docs/agents/reply-drafter.md)
+
 ### Email Summarizer Agent
 
 **What it adds**: Daily automated summaries of emails labeled with `summarize`
@@ -156,6 +170,7 @@ Teach the AI about your specific email patterns, priorities, and preferences usi
 
 ### Advanced Features
 
+- [Reply Drafter Agent](docs/agents/reply-drafter.md) — Automatic draft replies with AI
 - [Email Summarizer Agent](docs/agents/email-summarizer.md) — Daily email summaries
 - [Web App Dashboard](docs/features/web-app.md) — On-demand summarization interface
 - [Multi-Account Deployment](docs/features/multi-account.md) — Manage multiple accounts
