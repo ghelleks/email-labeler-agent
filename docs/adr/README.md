@@ -33,6 +33,9 @@ All ADRs in this project follow a consistent format defined in [template.md](tem
 - [ADR-010: PromptBuilder and LLMService Separation](010-promptbuilder-llmservice-separation.md)
 - [ADR-011: Self-Contained Agent Architecture](011-self-contained-agents.md)
 - [ADR-012: Generic Service Layer Pattern](012-generic-service-layer.md)
+- [ADR-013: Shared Utility Layer for Markdown and Common Functions](013-shared-utility-layer.md)
+- [ADR-014: Configuration Management and Ownership](014-configuration-management.md)
+- [ADR-015: INSTRUCTIONS vs KNOWLEDGE Configuration Naming Convention](015-instructions-knowledge-naming.md)
 
 ## Status Legend
 
