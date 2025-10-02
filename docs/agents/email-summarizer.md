@@ -272,6 +272,7 @@ To proceed without knowledge, remove this property.
 - Use real examples from your best summaries
 - Name files descriptively (e.g., "Example - Newsletter Style.txt")
 - Keep each example focused and concise
+- **Shortcuts supported**: You can use Google Drive shortcuts to documents in other folders
 
 **Token Management:**
 - Monitor debug logs for utilization percentage

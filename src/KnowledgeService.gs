@@ -316,7 +316,8 @@ function fetchDocument_(docIdOrUrl, options) {
  * - If successful: returns combined knowledge with aggregated metadata
  *
  * Document Processing:
- * - Only fetches Google Docs (MimeType.GOOGLE_DOCS)
+ * - Fetches Google Docs (MimeType.GOOGLE_DOCS) directly
+ * - Follows Google Drive shortcuts (MimeType.SHORTCUT) to target documents
  * - Respects options.maxDocs limit (default: 10)
  * - Each document prefixed with "=== Document Name ===" header
  * - Documents separated by blank lines
@@ -395,15 +396,41 @@ function fetchFolder_(folderIdOrUrl, options) {
 
   // Fetch documents from folder
   const maxDocs = options.maxDocs || 10;
-  const files = folder.getFilesByType(MimeType.GOOGLE_DOCS);
   const sources = [];
   const knowledgeParts = [];
   let totalChars = 0;
   let docCount = 0;
 
-  while (files.hasNext() && docCount < maxDocs) {
-    const file = files.next();
-    const docId = file.getId();
+  // Process all files in folder (including shortcuts)
+  const allFiles = folder.getFiles();
+  while (allFiles.hasNext() && docCount < maxDocs) {
+    const file = allFiles.next();
+    const mimeType = file.getMimeType();
+
+    let docId = null;
+
+    // Handle Google Docs directly
+    if (mimeType === MimeType.GOOGLE_DOCS) {
+      docId = file.getId();
+    }
+    // Handle shortcuts by following to target
+    else if (mimeType === MimeType.SHORTCUT) {
+      try {
+        const targetId = file.getTargetId();
+        const targetFile = DriveApp.getFileById(targetId);
+        if (targetFile.getMimeType() === MimeType.GOOGLE_DOCS) {
+          docId = targetId;
+        }
+      } catch (e) {
+        Logger.log('Failed to follow shortcut ' + file.getName() + ': ' + e.message);
+        continue;
+      }
+    }
+
+    // Skip non-document files
+    if (!docId) {
+      continue;
+    }
 
     try {
       // Fetch individual document (benefits from caching)
