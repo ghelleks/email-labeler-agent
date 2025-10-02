@@ -229,14 +229,33 @@ function fetchDocument_(docIdOrUrl, options) {
     }
   }
 
-  // Fetch from Drive
+  // Fetch from Drive using export API (requires only drive.readonly scope)
   let content;
   let docName;
 
   try {
-    const doc = DocumentApp.openById(docId);
-    docName = doc.getName();
-    content = doc.getBody().getText();
+    // First, get the document name using DriveApp (drive.readonly scope)
+    const file = DriveApp.getFileById(docId);
+    docName = file.getName();
+
+    // Use Google Docs export API to get content as plain text
+    // This avoids needing auth/documents scope - only requires drive.readonly
+    const exportUrl = 'https://docs.google.com/feeds/download/documents/export/Export?exportFormat=txt&id=' + encodeURIComponent(docId);
+
+    const response = UrlFetchApp.fetch(exportUrl, {
+      headers: {
+        'Authorization': 'Bearer ' + ScriptApp.getOAuthToken()
+      },
+      followRedirects: true,
+      muteHttpExceptions: true
+    });
+
+    if (response.getResponseCode() !== 200) {
+      throw new Error('Export failed with status ' + response.getResponseCode() + ': ' + response.getContentText());
+    }
+
+    content = response.getContentText();
+
   } catch (e) {
     throw new Error(
       'Failed to fetch knowledge document (ID: ' + docId + ').\n' +
@@ -447,59 +466,59 @@ function fetchFolder_(folderIdOrUrl, options) {
 /**
  * Fetch knowledge for email labeling
  *
- * Combines optional single document + optional folder knowledge.
- * If both configured, document content appears first, then folder contents.
+ * Combines optional instructions document + optional knowledge folder.
+ * If both configured, instructions appear first, then knowledge folder contents.
  *
  * Configuration Properties:
- * - LABEL_KNOWLEDGE_DOC_URL: Single document with core labeling rules
- * - LABEL_KNOWLEDGE_FOLDER_URL: Folder with additional context documents
+ * - LABEL_INSTRUCTIONS_DOC_URL: Single document with labeling methodology/criteria (how to label)
+ * - LABEL_KNOWLEDGE_FOLDER_URL: Folder with contextual reference material (what to know about)
  * - LABEL_KNOWLEDGE_MAX_DOCS: Max documents from folder (default: 5)
  *
  * @param {Object} config - Configuration object
- * @param {string} config.docUrl - LABEL_KNOWLEDGE_DOC_URL value
- * @param {string} config.folderUrl - LABEL_KNOWLEDGE_FOLDER_URL value
+ * @param {string} config.instructionsUrl - LABEL_INSTRUCTIONS_DOC_URL value (labeling methodology)
+ * @param {string} config.knowledgeFolderUrl - LABEL_KNOWLEDGE_FOLDER_URL value (context/reference)
  * @param {number} config.maxDocs - Maximum documents to fetch from folder (default: 5)
  * @return {Object} { configured: boolean, knowledge: string|null, metadata: Object|null }
  *
  * @example
  * // Nothing configured
  * const knowledge = fetchLabelingKnowledge_({
- *   docUrl: null,
- *   folderUrl: null
+ *   instructionsUrl: null,
+ *   knowledgeFolderUrl: null
  * });
  * // Returns: { configured: false, knowledge: null, metadata: null }
  *
  * @example
- * // Document only
+ * // Instructions only
  * const knowledge = fetchLabelingKnowledge_({
- *   docUrl: 'https://docs.google.com/document/d/abc123/edit',
- *   folderUrl: null,
+ *   instructionsUrl: 'https://docs.google.com/document/d/abc123/edit',
+ *   knowledgeFolderUrl: null,
  *   maxDocs: 5
  * });
  * // Returns: { configured: true, knowledge: "...", metadata: {...} }
  *
  * @example
- * // Document + folder
+ * // Instructions + knowledge folder
  * const knowledge = fetchLabelingKnowledge_({
- *   docUrl: 'https://docs.google.com/document/d/abc123/edit',
- *   folderUrl: 'https://drive.google.com/drive/folders/xyz789',
+ *   instructionsUrl: 'https://docs.google.com/document/d/abc123/edit',
+ *   knowledgeFolderUrl: 'https://drive.google.com/drive/folders/xyz789',
  *   maxDocs: 5
  * });
  * // Returns: {
  * //   configured: true,
- * //   knowledge: "doc content\n\n=== Folder Doc 1 ===\n...",
+ * //   knowledge: "instructions content\n\n=== Folder Doc 1 ===\n...",
  * //   metadata: { docCount: 6, totalChars: ..., utilizationPercent: "2.5%", ... }
  * // }
  */
 function fetchLabelingKnowledge_(config) {
   config = config || {};
 
-  const docUrl = config.docUrl;
-  const folderUrl = config.folderUrl;
+  const instructionsUrl = config.instructionsUrl;
+  const knowledgeFolderUrl = config.knowledgeFolderUrl;
   const maxDocs = config.maxDocs || 5;
 
   // Nothing configured
-  if (!docUrl && !folderUrl) {
+  if (!instructionsUrl && !knowledgeFolderUrl) {
     return {
       configured: false,
       knowledge: null,
@@ -512,10 +531,10 @@ function fetchLabelingKnowledge_(config) {
   let totalChars = 0;
   let totalDocs = 0;
 
-  // Fetch single document if configured
-  if (docUrl) {
-    const docResult = fetchDocument_(docUrl, {
-      propertyName: 'LABEL_KNOWLEDGE_DOC_URL'
+  // Fetch instructions document if configured
+  if (instructionsUrl) {
+    const docResult = fetchDocument_(instructionsUrl, {
+      propertyName: 'LABEL_INSTRUCTIONS_DOC_URL'
     });
 
     if (docResult.configured) {
@@ -526,9 +545,9 @@ function fetchLabelingKnowledge_(config) {
     }
   }
 
-  // Fetch folder if configured
-  if (folderUrl) {
-    const folderResult = fetchFolder_(folderUrl, {
+  // Fetch knowledge folder if configured
+  if (knowledgeFolderUrl) {
+    const folderResult = fetchFolder_(knowledgeFolderUrl, {
       propertyName: 'LABEL_KNOWLEDGE_FOLDER_URL',
       maxDocs: maxDocs
     });
@@ -571,13 +590,13 @@ function fetchLabelingKnowledge_(config) {
  * If both configured, instructions appear first, then context documents.
  *
  * Configuration Properties:
- * - REPLY_DRAFTER_INSTRUCTIONS_URL: Document with drafting style/guidelines
- * - REPLY_DRAFTER_CONTEXT_FOLDER_URL: Folder with context documents
- * - REPLY_DRAFTER_CONTEXT_MAX_DOCS: Max documents from folder (default: 5)
+ * - REPLY_DRAFTER_INSTRUCTIONS_URL: Document with drafting style/guidelines (how to draft)
+ * - REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL: Folder with contextual reference material (what to know about)
+ * - REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS: Max documents from folder (default: 5)
  *
  * @param {Object} config - Configuration object
- * @param {string} config.instructionsUrl - REPLY_DRAFTER_INSTRUCTIONS_URL value
- * @param {string} config.contextFolderUrl - REPLY_DRAFTER_CONTEXT_FOLDER_URL value
+ * @param {string} config.instructionsUrl - REPLY_DRAFTER_INSTRUCTIONS_URL value (drafting methodology)
+ * @param {string} config.knowledgeFolderUrl - REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL value (context/reference)
  * @param {number} config.maxDocs - Maximum documents to fetch from folder (default: 5)
  * @return {Object} { configured: boolean, knowledge: string|null, metadata: Object|null }
  *
@@ -615,11 +634,11 @@ function fetchReplyKnowledge_(config) {
   config = config || {};
 
   const instructionsUrl = config.instructionsUrl;
-  const contextFolderUrl = config.contextFolderUrl;
+  const knowledgeFolderUrl = config.knowledgeFolderUrl;
   const maxDocs = config.maxDocs || 5;
 
   // Nothing configured
-  if (!instructionsUrl && !contextFolderUrl) {
+  if (!instructionsUrl && !knowledgeFolderUrl) {
     return {
       configured: false,
       knowledge: null,
@@ -646,18 +665,18 @@ function fetchReplyKnowledge_(config) {
     }
   }
 
-  // Fetch context folder if configured
-  if (contextFolderUrl) {
-    const contextResult = fetchFolder_(contextFolderUrl, {
-      propertyName: 'REPLY_DRAFTER_CONTEXT_FOLDER_URL',
+  // Fetch knowledge folder if configured
+  if (knowledgeFolderUrl) {
+    const knowledgeResult = fetchFolder_(knowledgeFolderUrl, {
+      propertyName: 'REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL',
       maxDocs: maxDocs
     });
 
-    if (contextResult.configured) {
-      parts.push(contextResult.knowledge);
-      sources.push(...contextResult.metadata.sources);
-      totalChars += contextResult.metadata.totalChars;
-      totalDocs += contextResult.metadata.docCount;
+    if (knowledgeResult.configured) {
+      parts.push(knowledgeResult.knowledge);
+      sources.push(...knowledgeResult.metadata.sources);
+      totalChars += knowledgeResult.metadata.totalChars;
+      totalDocs += knowledgeResult.metadata.docCount;
     }
   }
 

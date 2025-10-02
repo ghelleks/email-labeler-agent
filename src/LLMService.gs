@@ -1,14 +1,12 @@
-function categorizeBatch_(emails, rulesText, model, projectId, location, fallback, apiKey) {
-  const prompt = buildCategorizePrompt_(rulesText, emails, ['reply_needed','review','todo','summarize'], fallback);
+function categorizeBatch_(prompt, model, projectId, location, apiKey) {
+  // Prompt is already built by PromptBuilder - just make the API call
   const payload = { contents: [{ role: 'user', parts: [{ text: prompt }]}] };
 
   if (PropertiesService.getScriptProperties().getProperty('DEBUG') === 'true') {
     console.log(JSON.stringify({
       promptSent: {
         promptLength: prompt.length,
-        emailCount: emails.length,
         model: model,
-        fallback: fallback,
         promptPreview: prompt.substring(0, 500) + (prompt.length > 500 ? '...' : '')
       }
     }, null, 2));
@@ -38,6 +36,20 @@ function categorizeBatch_(emails, rulesText, model, projectId, location, fallbac
   let res = UrlFetchApp.fetch(url, opts);
   let json = {};
   try { json = JSON.parse(res.getContentText()); } catch (e) { json = {}; }
+
+  // Check for token limit errors and provide actionable error message
+  if (json.error && json.error.message) {
+    const errorMsg = json.error.message;
+    if (errorMsg.includes('token limit') || errorMsg.includes('context length') || errorMsg.includes('exceeded maximum')) {
+      throw new Error(
+        'Gemini API token limit exceeded. ' +
+        'Your knowledge documents and emails exceeded the model\'s 1M token capacity. ' +
+        'Try reducing LABEL_KNOWLEDGE_MAX_DOCS or processing fewer emails. ' +
+        'Original error: ' + errorMsg
+      );
+    }
+  }
+
   if (PropertiesService.getScriptProperties().getProperty('DEBUG') === 'true') {
     console.log(JSON.stringify({ requestChars: prompt.length, httpStatus: res.getResponseCode(), apiMode: useApiKey ? 'apiKey' : 'vertex', raw: json }, null, 2));
   }
@@ -62,7 +74,8 @@ function categorizeBatch_(emails, rulesText, model, projectId, location, fallbac
     if (PropertiesService.getScriptProperties().getProperty('DEBUG') === 'true') {
       console.log(JSON.stringify({ parsedEmails: null, reason: 'malformed-json-or-empty' }, null, 2));
     }
-    return emails.map(function(e) { return { id: e.id, required_action: null, reason: 'fallback-on-error' }; });
+    // Return null to signal parsing failure - caller handles fallback logic
+    return null;
   }
   return out;
 }

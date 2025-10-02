@@ -10,7 +10,7 @@
  *
  * Migration path:
  * - Old: const rulesText = getRuleText_(cfg.RULE_DOC_URL);
- * - New: const knowledge = fetchLabelingKnowledge_({ docUrl: cfg.LABEL_KNOWLEDGE_DOC_URL });
+ * - New: const knowledge = fetchLabelingKnowledge_({ instructionsUrl: cfg.LABEL_INSTRUCTIONS_DOC_URL });
  *
  * @param {string} docIdOrUrl - Document ID or URL (RULE_DOC_URL/RULE_DOC_ID)
  * @return {string} Rule document text or default rules
