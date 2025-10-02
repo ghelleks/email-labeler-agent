@@ -54,10 +54,11 @@ function buildCategorizePrompt_(emails, knowledge, allowed, fallback) {
 /**
  * Build consolidated summary prompt for multiple emails
  * @param {Array} emailContents - Array of email objects with subject, from, date, body
+ * @param {Object} knowledge - Knowledge object from KnowledgeService (optional)
  * @param {Object} config - Configuration object with emailLinks, includeWebLinks
  * @returns {string} - Formatted prompt for AI summarization
  */
-function buildSummaryPrompt_(emailContents, config) {
+function buildSummaryPrompt_(emailContents, knowledge, config) {
   // Build email reference mapping with subjects and Gmail URLs for the AI
   let emailReferenceMap = 'EMAIL REFERENCE MAP:\n';
   for (let i = 0; i < emailContents.length; i++) {
@@ -88,43 +89,63 @@ function buildSummaryPrompt_(emailContents, config) {
 
   // Build the main prompt
   const promptParts = [
-    `Please create a consolidated summary of these ${emailContents.length} emails in the style of "The Economist's World in Brief" - concise, direct, and informative.`,
-    '',
-    'REQUIREMENTS:',
-    '1. Create ONE unified summary covering all emails',
-    '2. Use **bold formatting** for important terms, people, places, and proper nouns',
-    '3. Use *italic formatting* for emphasis and context',
-    '4. Group related topics together intelligently with clear theme headlines',
-    '5. Keep the tone professional, authoritative, and concise',
-    '6. Include important web URLs as inline markdown links: [link text](URL)',
-    '7. Focus on key insights, decisions, and actionable information',
-    '8. Maximum length: 400 words',
-    '9. Structure each theme with a clear headline followed by content',
-    '10. Include context that helps understand the significance of information',
-    '',
-    'MARKDOWN FORMATTING REQUIREMENTS:',
-    '- Start each major theme with a clear headline (use ### format)',
-    '- Group related emails under the same theme when appropriate',
-    '- Include web URLs as proper markdown links: [descriptive text](URL) within sentences',
-    '- At the end of each theme section, create Gmail links for source emails using this format:',
-    '  **Sources:** [Email Subject 1](gmail_url_1), [Email Subject 2](gmail_url_2)',
-    '- Use the exact subject lines and Gmail URLs from the EMAIL REFERENCE MAP provided below',
-    "- If emails don't naturally group, create logical themes like \"Business Updates\", \"Project Status\", \"Action Items\", etc.",
-    '- Use standard markdown formatting throughout (bold, italic, links, headers)',
-    '',
-    'STYLE NOTES:',
-    '- Write like a seasoned journalist summarizing global events',
-    '- Be direct and factual, avoid unnecessary adjectives',
-    '- Use present tense where appropriate',
-    '- Prioritize information by importance and urgency',
-    '- Each theme should be self-contained with its relevant source attribution',
-    '',
-    emailReferenceMap,
-    '',
-    combinedContent + webLinksSection,
-    '',
-    'Please provide only the summary text using proper markdown formatting (bold, italic, links, headers). Do not include introductory phrases like "Here is a summary" - start directly with the content.'
+    `Please create a consolidated summary of these ${emailContents.length} emails in the style of "The Economist's World in Brief" - concise, direct, and informative.`
   ];
+
+  // CONDITIONAL KNOWLEDGE INJECTION (new behavior)
+  if (knowledge && knowledge.configured) {
+    promptParts.push('');
+    promptParts.push('=== SUMMARIZATION GUIDELINES ===');
+    promptParts.push(knowledge.knowledge);
+
+    // Token utilization logging (when SUMMARIZER_DEBUG enabled)
+    if (knowledge.metadata && knowledge.metadata.utilizationPercent) {
+      const summarizerCfg = getSummarizerConfig_();
+      if (summarizerCfg.SUMMARIZER_DEBUG) {
+        console.log(JSON.stringify({
+          summarizerKnowledgeUtilization: knowledge.metadata.utilizationPercent,
+          estimatedTokens: knowledge.metadata.estimatedTokens,
+          modelLimit: knowledge.metadata.modelLimit
+        }, null, 2));
+      }
+    }
+  }
+
+  promptParts.push('');
+  promptParts.push('REQUIREMENTS:');
+  promptParts.push('1. Create ONE unified summary covering all emails');
+  promptParts.push('2. Use **bold formatting** for important terms, people, places, and proper nouns');
+  promptParts.push('3. Use *italic formatting* for emphasis and context');
+  promptParts.push('4. Group related topics together intelligently with clear theme headlines');
+  promptParts.push('5. Keep the tone professional, authoritative, and concise');
+  promptParts.push('6. Include important web URLs as inline markdown links: [link text](URL)');
+  promptParts.push('7. Focus on key insights, decisions, and actionable information');
+  promptParts.push('8. Maximum length: 400 words');
+  promptParts.push('9. Structure each theme with a clear headline followed by content');
+  promptParts.push('10. Include context that helps understand the significance of information');
+  promptParts.push('');
+  promptParts.push('MARKDOWN FORMATTING REQUIREMENTS:');
+  promptParts.push('- Start each major theme with a clear headline (use ### format)');
+  promptParts.push('- Group related emails under the same theme when appropriate');
+  promptParts.push('- Include web URLs as proper markdown links: [descriptive text](URL) within sentences');
+  promptParts.push('- At the end of each theme section, create Gmail links for source emails using this format:');
+  promptParts.push('  **Sources:** [Email Subject 1](gmail_url_1), [Email Subject 2](gmail_url_2)');
+  promptParts.push('- Use the exact subject lines and Gmail URLs from the EMAIL REFERENCE MAP provided below');
+  promptParts.push("- If emails don't naturally group, create logical themes like \"Business Updates\", \"Project Status\", \"Action Items\", etc.");
+  promptParts.push('- Use standard markdown formatting throughout (bold, italic, links, headers)');
+  promptParts.push('');
+  promptParts.push('STYLE NOTES:');
+  promptParts.push('- Write like a seasoned journalist summarizing global events');
+  promptParts.push('- Be direct and factual, avoid unnecessary adjectives');
+  promptParts.push('- Use present tense where appropriate');
+  promptParts.push('- Prioritize information by importance and urgency');
+  promptParts.push('- Each theme should be self-contained with its relevant source attribution');
+  promptParts.push('');
+  promptParts.push(emailReferenceMap);
+  promptParts.push('');
+  promptParts.push(combinedContent + webLinksSection);
+  promptParts.push('');
+  promptParts.push('Please provide only the summary text using proper markdown formatting (bold, italic, links, headers). Do not include introductory phrases like "Here is a summary" - start directly with the content.');
 
   return promptParts.join('\n');
 }

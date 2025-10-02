@@ -31,13 +31,21 @@
 function getTemplateAgentConfig_() {
   const props = PropertiesService.getScriptProperties();
   return {
-    // Use agent-specific prefixes to avoid conflicts
+    // Basic agent settings
     TEMPLATE_ENABLED: (props.getProperty('TEMPLATE_AGENT_ENABLED') || 'true').toLowerCase() === 'true',
     TEMPLATE_MAX_ITEMS: parseInt(props.getProperty('TEMPLATE_MAX_ITEMS') || '10', 10),
     TEMPLATE_DESTINATION: props.getProperty('TEMPLATE_DESTINATION') || Session.getActiveUser().getEmail(),
-    // Use shared utility pattern for agent configurations
-    // Example: TEMPLATE_CONFIG: getAgentConfig_('TEMPLATE', defaultConfig),
-    // Add your agent's configuration options here
+
+    // Knowledge configuration (for AI-powered agents - ADR-015 semantic naming)
+    // INSTRUCTIONS: How to perform the task (methodology, criteria, guidelines)
+    // KNOWLEDGE: Contextual reference material (examples, background, patterns)
+    TEMPLATE_INSTRUCTIONS_DOC_URL: props.getProperty('TEMPLATE_INSTRUCTIONS_DOC_URL'),
+    TEMPLATE_KNOWLEDGE_FOLDER_URL: props.getProperty('TEMPLATE_KNOWLEDGE_FOLDER_URL'),
+    TEMPLATE_KNOWLEDGE_MAX_DOCS: parseInt(props.getProperty('TEMPLATE_KNOWLEDGE_MAX_DOCS') || '5', 10),
+
+    // Debugging
+    TEMPLATE_DEBUG: (props.getProperty('TEMPLATE_DEBUG') || 'false').toLowerCase() === 'true',
+    TEMPLATE_DRY_RUN: (props.getProperty('TEMPLATE_DRY_RUN') || 'false').toLowerCase() === 'true'
   };
 }
 
@@ -80,6 +88,20 @@ function templateAgentHandler(ctx) {
 
     // Ensure agent labels exist
     const processedLabel = ensureTemplateAgentLabels_();
+
+    // For AI-powered agents: Fetch knowledge before processing
+    // Uncomment if your agent uses AI with customizable behavior
+    // const knowledge = fetchTemplateAgentKnowledge_({
+    //   instructionsUrl: config.TEMPLATE_INSTRUCTIONS_DOC_URL,
+    //   knowledgeFolderUrl: config.TEMPLATE_KNOWLEDGE_FOLDER_URL,
+    //   maxDocs: config.TEMPLATE_KNOWLEDGE_MAX_DOCS
+    // });
+    //
+    // Build AI prompt with knowledge injection
+    // const prompt = buildTemplatePrompt_(emailData, knowledge, config);
+    //
+    // Call LLMService with built prompt
+    // const result = someAIFunction_(prompt, config);
 
     // TODO: Implement your agent's main logic here
     // Example: Add processed label to show agent ran
@@ -140,6 +162,136 @@ function runTemplateAgent() {
 function deleteTemplateAgentTriggers_() {
   // Use shared utility for trigger cleanup
   return deleteTriggersByFunction_('runTemplateAgent');
+}
+
+// ============================================================================
+// TEMPLATE: KnowledgeService Integration (For AI-Powered Agents)
+// ============================================================================
+
+/**
+ * Example: Fetch agent-specific knowledge from Google Drive
+ *
+ * For AI-powered agents, use KnowledgeService to fetch customization documents:
+ * - INSTRUCTIONS: How to perform tasks (methodology, style, criteria)
+ * - KNOWLEDGE: Contextual reference material (examples, context, patterns)
+ *
+ * This pattern enables users to customize agent behavior without code changes.
+ *
+ * See ADR-015 for INSTRUCTIONS vs KNOWLEDGE semantic naming convention.
+ * See Email Summarizer (AgentSummarizer.gs) for a complete working example.
+ */
+function fetchTemplateAgentKnowledge_(config) {
+  config = config || {};
+
+  const instructionsUrl = config.instructionsUrl;
+  const knowledgeFolderUrl = config.knowledgeFolderUrl;
+  const maxDocs = config.maxDocs || 5;
+
+  // Nothing configured - agent runs with default behavior
+  if (!instructionsUrl && !knowledgeFolderUrl) {
+    return {
+      configured: false,
+      knowledge: null,
+      metadata: null
+    };
+  }
+
+  const parts = [];
+  const sources = [];
+  let totalChars = 0;
+  let totalDocs = 0;
+
+  // Fetch instructions document (how to perform the task)
+  if (instructionsUrl) {
+    const instructionsResult = fetchDocument_(instructionsUrl, {
+      propertyName: 'TEMPLATE_INSTRUCTIONS_DOC_URL'
+    });
+
+    if (instructionsResult.configured) {
+      parts.push(instructionsResult.knowledge);
+      sources.push(instructionsResult.metadata.source);
+      totalChars += instructionsResult.metadata.chars;
+      totalDocs++;
+    }
+  }
+
+  // Fetch knowledge folder (contextual reference material)
+  if (knowledgeFolderUrl) {
+    const knowledgeResult = fetchFolder_(knowledgeFolderUrl, {
+      propertyName: 'TEMPLATE_KNOWLEDGE_FOLDER_URL',
+      maxDocs: maxDocs
+    });
+
+    if (knowledgeResult.configured) {
+      parts.push(knowledgeResult.knowledge);
+      sources.push(...knowledgeResult.metadata.sources);
+      totalChars += knowledgeResult.metadata.totalChars;
+      totalDocs += knowledgeResult.metadata.docCount;
+    }
+  }
+
+  const combinedKnowledge = parts.join('\n\n');
+  const estimatedTokens = estimateTokens_(combinedKnowledge);
+  const modelLimit = 1048576; // Gemini 2.5 supports 1M tokens
+
+  const result = {
+    configured: true,
+    knowledge: combinedKnowledge,
+    metadata: {
+      docCount: totalDocs,
+      totalChars: totalChars,
+      estimatedTokens: estimatedTokens,
+      modelLimit: modelLimit,
+      utilizationPercent: (estimatedTokens / modelLimit * 100).toFixed(1) + '%',
+      sources: sources
+    }
+  };
+
+  // Log token warnings if approaching capacity
+  logTokenWarnings_(result.metadata);
+
+  return result;
+}
+
+/**
+ * Example: Build AI prompt with knowledge injection
+ *
+ * For agents that use LLMService, build prompts in PromptBuilder.gs (preferred)
+ * or within the agent if prompt structure is agent-specific.
+ *
+ * This example shows in-agent prompt building. For shared prompts, add to PromptBuilder.gs.
+ */
+function buildTemplatePromptWithKnowledge_(items, knowledge, config) {
+  const parts = [
+    'You are an AI assistant for [AGENT PURPOSE].'
+  ];
+
+  // CONDITIONAL KNOWLEDGE INJECTION
+  if (knowledge && knowledge.configured) {
+    parts.push('');
+    parts.push('=== AGENT GUIDELINES ===');
+    parts.push(knowledge.knowledge);
+
+    // Token utilization logging (when DEBUG enabled)
+    if (knowledge.metadata && knowledge.metadata.utilizationPercent) {
+      const agentConfig = getTemplateAgentConfig_();
+      if (agentConfig.TEMPLATE_DEBUG) {
+        console.log(JSON.stringify({
+          templateAgentKnowledgeUtilization: knowledge.metadata.utilizationPercent,
+          estimatedTokens: knowledge.metadata.estimatedTokens,
+          modelLimit: knowledge.metadata.modelLimit
+        }, null, 2));
+      }
+    }
+  }
+
+  parts.push('');
+  parts.push('Items to process:');
+  parts.push(JSON.stringify(items, null, 2));
+  parts.push('');
+  parts.push('Please process according to guidelines above.');
+
+  return parts.join('\n');
 }
 
 // ============================================================================

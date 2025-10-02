@@ -102,16 +102,20 @@ function enforceBudget_(nCalls, dailyLimit) {
  */
 
 /**
- * Generate consolidated summary of multiple emails using AI service
+ * Generate consolidated summary using AI service with pre-built prompt
  * Follows "The Economist's World in Brief" style with bold formatting
+ *
+ * NOTE: Caller is responsible for building prompt with knowledge injection.
+ * Use buildSummaryPrompt_(emails, knowledge, config) before calling this function.
+ *
  * Returns: { success: boolean, summary: string, error?: string }
  */
-function generateConsolidatedSummary_(emailContents, config) {
+function generateConsolidatedSummary_(prompt, config) {
   try {
-    if (!emailContents || emailContents.length === 0) {
+    if (!prompt || typeof prompt !== 'string') {
       return {
         success: false,
-        error: 'No email content provided for summarization'
+        error: 'No prompt provided for summarization'
       };
     }
 
@@ -130,9 +134,6 @@ function generateConsolidatedSummary_(emailContents, config) {
       };
     }
 
-    // Build the prompt using PromptBuilder for consistency
-    const prompt = buildSummaryPrompt_(emailContents, config);
-
     // Prepare API request using existing patterns
     const payload = {
       contents: [{
@@ -143,7 +144,7 @@ function generateConsolidatedSummary_(emailContents, config) {
 
     // Debug logging following existing pattern
     if (cfg.DEBUG) {
-      Logger.log(`LLMService.generateConsolidatedSummary_: Processing ${emailContents.length} emails, prompt length: ${prompt.length}`);
+      Logger.log(`LLMService.generateConsolidatedSummary_: Prompt length: ${prompt.length} chars`);
     }
 
     // Choose API endpoint based on available credentials (following existing pattern)

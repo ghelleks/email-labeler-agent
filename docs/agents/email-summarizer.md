@@ -112,6 +112,192 @@ SUMMARIZER_MAX_EMAILS_PER_SUMMARY = 100
 SUMMARIZER_DEBUG = true
 ```
 
+## Knowledge Customization
+
+The Email Summarizer supports customizable summarization behavior through Google Drive documents, enabling you to define your own summarization style, tone, and formatting preferences without modifying code.
+
+### Overview
+
+The knowledge system uses two types of documents following [ADR-015](../../docs/adr/015-instructions-vs-knowledge-naming.md) semantic naming:
+
+- **INSTRUCTIONS**: How to summarize (tone, length, formatting, focus areas)
+- **KNOWLEDGE**: Contextual reference material (examples, terminology, patterns)
+
+Both are optional. Without knowledge configuration, the Email Summarizer uses default "Economist's World in Brief" style.
+
+### Configuration Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `SUMMARIZER_INSTRUCTIONS_DOC_URL` | Document URL or ID | Guidelines document (tone, style, formatting) |
+| `SUMMARIZER_KNOWLEDGE_FOLDER_URL` | Folder URL or ID | Folder with example summaries and context |
+| `SUMMARIZER_KNOWLEDGE_MAX_DOCS` | Number (default: 5) | Maximum documents to fetch from knowledge folder |
+
+### Setup Guide
+
+#### Option 1: Instructions Only (Simple Customization)
+
+Create a Google Doc with your summarization preferences:
+
+**Example Instructions Document:**
+```
+Email Summarization Style Guide
+
+TONE & LENGTH:
+- Use casual, friendly tone (not formal business style)
+- Keep summaries very brief (2-3 sentences max per theme)
+- Maximum total length: 200 words
+
+FOCUS AREAS:
+- Emphasize action items and decisions over informational content
+- Highlight deadlines and time-sensitive information
+- Downplay routine updates and FYIs
+
+FORMATTING:
+- Use bullet points instead of paragraphs
+- Highlight person names in CAPS
+- Include emoji for visual scanning (📧 ✅ ⚠️)
+```
+
+**Configuration:**
+```
+SUMMARIZER_INSTRUCTIONS_DOC_URL = https://docs.google.com/document/d/YOUR_DOC_ID/edit
+```
+
+#### Option 2: Instructions + Examples (Advanced Customization)
+
+Create an instructions document plus a folder with example summaries:
+
+**Example Knowledge Folder Contents:**
+
+**File 1: Example Summary - Project Updates.txt**
+```
+Good summary style for project emails:
+
+**PROJECT: Website Redesign** 🎨
+SARAH MARTINEZ announced launch delayed to Q3. Design team addressing API integration issues.
+**Action:** JOHN needs to review revised timeline by Friday.
+```
+
+**File 2: Example Summary - Newsletters.txt**
+```
+Good summary style for newsletters:
+
+**TECH NEWS DIGEST** 📰
+Three AI model releases this week. Most notable: improved reasoning capabilities.
+Read full: [link]
+```
+
+**Configuration:**
+```
+SUMMARIZER_INSTRUCTIONS_DOC_URL = https://docs.google.com/document/d/YOUR_DOC_ID/edit
+SUMMARIZER_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/YOUR_FOLDER_ID
+SUMMARIZER_KNOWLEDGE_MAX_DOCS = 3
+```
+
+### Token Utilization & Limits
+
+The knowledge system provides transparency about AI token usage:
+
+- **Token estimation**: Automatically calculated (chars / 4 heuristic)
+- **Model capacity**: Gemini 2.5 supports 1M input tokens (~750K words)
+- **Soft warning**: Logged at 50% capacity (524K tokens)
+- **Critical warning**: Logged at 90% capacity (943K tokens)
+
+**Debug logging** (when `SUMMARIZER_DEBUG=true`):
+```json
+{
+  "summarizerKnowledgeUtilization": "2.5%",
+  "estimatedTokens": 26214,
+  "modelLimit": 1048576
+}
+```
+
+### Customization Examples
+
+**Casual tone for personal use:**
+```
+Tone: Super casual, like texting a friend
+Length: 1-2 sentences per email, max 150 words total
+Formatting: Use lots of emoji, bullet points only
+```
+
+**Executive briefing style:**
+```
+Tone: Formal, executive summary style
+Length: 3-5 sentences per major theme, max 400 words
+Focus: Strategic insights, decisions, financial impacts
+Formatting: Numbered themes, bold for key terms
+```
+
+**Action-focused summaries:**
+```
+Tone: Directive, task-oriented
+Focus: ONLY include emails requiring action
+Formatting: Checkbox format (☐), deadlines in bold
+Filter: Ignore FYIs and informational emails
+```
+
+### Error Handling
+
+The knowledge system uses **fail-fast** error handling:
+
+**If knowledge not configured:**
+- ✅ System proceeds with default Economist style
+- ✅ No errors or warnings
+
+**If knowledge configured but inaccessible:**
+- ❌ Summarization fails with actionable error
+- ✅ Error includes property name and remediation steps
+- ✅ No silent fallback to defaults
+
+**Example error message:**
+```
+Failed to fetch knowledge document (ID: ABC123XYZ).
+Document may not exist or you may lack permission.
+Configuration property: SUMMARIZER_INSTRUCTIONS_DOC_URL
+To proceed without knowledge, remove this property.
+```
+
+### Best Practices for Knowledge Documents
+
+**Instructions Document:**
+- Keep under 5,000 characters for quick token usage
+- Be specific about tone, length, and formatting
+- Include examples of good and bad practices
+- Update as your preferences evolve
+
+**Knowledge Folder:**
+- Limit to 3-5 example documents (use `SUMMARIZER_KNOWLEDGE_MAX_DOCS`)
+- Use real examples from your best summaries
+- Name files descriptively (e.g., "Example - Newsletter Style.txt")
+- Keep each example focused and concise
+- **Shortcuts supported**: You can use Google Drive shortcuts to documents in other folders
+
+**Token Management:**
+- Monitor debug logs for utilization percentage
+- If warnings appear, reduce `SUMMARIZER_KNOWLEDGE_MAX_DOCS`
+- Remove verbose examples or split into focused documents
+- Disable warnings with `KNOWLEDGE_LOG_SIZE_WARNINGS=false` (not recommended)
+
+### Troubleshooting Knowledge Integration
+
+**Knowledge not being applied:**
+- Verify document/folder URLs are correct in Script Properties
+- Check document permissions (must have at least Viewer access)
+- Enable `SUMMARIZER_DEBUG=true` to see token utilization logs
+- Run test: `testSummarizerKnowledgeIntegration()` in Apps Script editor
+
+**Token warnings appearing:**
+- Reduce number of documents: lower `SUMMARIZER_KNOWLEDGE_MAX_DOCS`
+- Simplify instructions document (remove verbose examples)
+- Split large knowledge documents into smaller focused ones
+
+**Configuration errors:**
+- Double-check URLs are complete (include `/edit` for docs)
+- Verify you have access to documents/folders
+- Remove property entirely to proceed without knowledge
+
 ## Example Summary Output
 
 The Email Summarizer generates summaries in this format:
@@ -258,6 +444,7 @@ Implementation: `src/AgentSummarizer.gs`
 
 - [ADR-011: Self-Contained Agent Architecture](../../docs/adr/011-self-contained-agents.md)
 - [ADR-012: Generic Service Layer Pattern](../../docs/adr/012-generic-service-layer.md)
+- [ADR-015: INSTRUCTIONS vs KNOWLEDGE Naming Convention](../../docs/adr/015-instructions-vs-knowledge-naming.md)
 
 ## See Also
 

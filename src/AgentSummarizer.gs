@@ -41,6 +41,13 @@ function getSummarizerConfig_() {
     // Archive behavior
     SUMMARIZER_ARCHIVE_ON_LABEL: (props.getProperty('SUMMARIZER_ARCHIVE_ON_LABEL') || 'true').toLowerCase() === 'true',
 
+    // Knowledge configuration (ADR-015 semantic naming)
+    // INSTRUCTIONS: How to summarize (tone, length, focus areas)
+    // KNOWLEDGE: Contextual reference material (examples, patterns, terminology)
+    SUMMARIZER_INSTRUCTIONS_DOC_URL: props.getProperty('SUMMARIZER_INSTRUCTIONS_DOC_URL'),
+    SUMMARIZER_KNOWLEDGE_FOLDER_URL: props.getProperty('SUMMARIZER_KNOWLEDGE_FOLDER_URL'),
+    SUMMARIZER_KNOWLEDGE_MAX_DOCS: parseInt(props.getProperty('SUMMARIZER_KNOWLEDGE_MAX_DOCS') || '5', 10),
+
     // Debugging and testing
     SUMMARIZER_DEBUG: (props.getProperty('SUMMARIZER_DEBUG') || 'false').toLowerCase() === 'true',
     SUMMARIZER_DRY_RUN: (props.getProperty('SUMMARIZER_DRY_RUN') || 'false').toLowerCase() === 'true'
@@ -94,6 +101,13 @@ function generateSummaryFromEmails_(emails) {
       };
     }
 
+    // Fetch summarization knowledge (new: KnowledgeService integration)
+    const knowledge = fetchSummarizerKnowledge_({
+      instructionsUrl: config.SUMMARIZER_INSTRUCTIONS_DOC_URL,
+      knowledgeFolderUrl: config.SUMMARIZER_KNOWLEDGE_FOLDER_URL,
+      maxDocs: config.SUMMARIZER_KNOWLEDGE_MAX_DOCS
+    });
+
     // Extract web links from emails for inclusion in summary
     const webLinks = extractWebLinksFromEmails_(emails);
 
@@ -106,8 +120,11 @@ function generateSummaryFromEmails_(emails) {
       includeWebLinks: webLinks
     };
 
+    // Build prompt with knowledge injection (new: prompt built by agent, not LLMService)
+    const prompt = buildSummaryPrompt_(emails, knowledge, summaryConfig);
+
     // Use existing LLMService function for AI summarization
-    const result = generateConsolidatedSummary_(emails, summaryConfig);
+    const result = generateConsolidatedSummary_(prompt, summaryConfig);
 
     if (config.SUMMARIZER_DEBUG) {
       Logger.log(`AgentSummarizer: Generated summary for ${emails.length} emails, length: ${result.summary ? result.summary.length : 0} chars`);
