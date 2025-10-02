@@ -702,3 +702,123 @@ function fetchReplyKnowledge_(config) {
 
   return result;
 }
+
+/**
+ * Fetch knowledge for email summarization
+ *
+ * Combines optional instructions document + optional knowledge folder.
+ * If both configured, instructions appear first, then knowledge folder contents.
+ *
+ * Configuration Properties:
+ * - SUMMARIZER_INSTRUCTIONS_DOC_URL: Document with summarization guidelines (tone, length, focus)
+ * - SUMMARIZER_KNOWLEDGE_FOLDER_URL: Folder with summary examples/context
+ * - SUMMARIZER_KNOWLEDGE_MAX_DOCS: Max documents from folder (default: 5)
+ *
+ * @param {Object} config - Configuration object
+ * @param {string} config.instructionsUrl - SUMMARIZER_INSTRUCTIONS_DOC_URL value (how to summarize)
+ * @param {string} config.knowledgeFolderUrl - SUMMARIZER_KNOWLEDGE_FOLDER_URL value (examples/context)
+ * @param {number} config.maxDocs - Maximum documents to fetch from folder (default: 5)
+ * @return {Object} { configured: boolean, knowledge: string|null, metadata: Object|null }
+ *
+ * @example
+ * // Nothing configured (default behavior)
+ * const knowledge = fetchSummarizerKnowledge_({
+ *   instructionsUrl: null,
+ *   knowledgeFolderUrl: null
+ * });
+ * // Returns: { configured: false, knowledge: null, metadata: null }
+ *
+ * @example
+ * // Instructions only
+ * const knowledge = fetchSummarizerKnowledge_({
+ *   instructionsUrl: 'https://docs.google.com/document/d/abc123/edit',
+ *   knowledgeFolderUrl: null,
+ *   maxDocs: 5
+ * });
+ * // Returns: { configured: true, knowledge: "summarization guidelines...", metadata: {...} }
+ *
+ * @example
+ * // Instructions + knowledge folder
+ * const knowledge = fetchSummarizerKnowledge_({
+ *   instructionsUrl: 'https://docs.google.com/document/d/abc123/edit',
+ *   knowledgeFolderUrl: 'https://drive.google.com/drive/folders/xyz789',
+ *   maxDocs: 5
+ * });
+ * // Returns: {
+ * //   configured: true,
+ * //   knowledge: "instructions\n\n=== Example Summary 1 ===\n...",
+ * //   metadata: { docCount: 4, utilizationPercent: "1.5%", ... }
+ * // }
+ */
+function fetchSummarizerKnowledge_(config) {
+  config = config || {};
+
+  const instructionsUrl = config.instructionsUrl;
+  const knowledgeFolderUrl = config.knowledgeFolderUrl;
+  const maxDocs = config.maxDocs || 5;
+
+  // Nothing configured
+  if (!instructionsUrl && !knowledgeFolderUrl) {
+    return {
+      configured: false,
+      knowledge: null,
+      metadata: null
+    };
+  }
+
+  const parts = [];
+  const sources = [];
+  let totalChars = 0;
+  let totalDocs = 0;
+
+  // Fetch instructions if configured
+  if (instructionsUrl) {
+    const instructionsResult = fetchDocument_(instructionsUrl, {
+      propertyName: 'SUMMARIZER_INSTRUCTIONS_DOC_URL'
+    });
+
+    if (instructionsResult.configured) {
+      parts.push(instructionsResult.knowledge);
+      sources.push(instructionsResult.metadata.source);
+      totalChars += instructionsResult.metadata.chars;
+      totalDocs++;
+    }
+  }
+
+  // Fetch knowledge folder if configured
+  if (knowledgeFolderUrl) {
+    const knowledgeResult = fetchFolder_(knowledgeFolderUrl, {
+      propertyName: 'SUMMARIZER_KNOWLEDGE_FOLDER_URL',
+      maxDocs: maxDocs
+    });
+
+    if (knowledgeResult.configured) {
+      parts.push(knowledgeResult.knowledge);
+      sources.push(...knowledgeResult.metadata.sources);
+      totalChars += knowledgeResult.metadata.totalChars;
+      totalDocs += knowledgeResult.metadata.docCount;
+    }
+  }
+
+  const combinedKnowledge = parts.join('\n\n');
+  const estimatedTokens = estimateTokens_(combinedKnowledge);
+  const modelLimit = 1048576;
+
+  const result = {
+    configured: true,
+    knowledge: combinedKnowledge,
+    metadata: {
+      docCount: totalDocs,
+      totalChars: totalChars,
+      estimatedTokens: estimatedTokens,
+      modelLimit: modelLimit,
+      utilizationPercent: (estimatedTokens / modelLimit * 100).toFixed(1) + '%',
+      sources: sources
+    }
+  };
+
+  // Log token warnings if approaching capacity
+  logTokenWarnings_(result.metadata);
+
+  return result;
+}

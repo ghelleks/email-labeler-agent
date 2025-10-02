@@ -98,12 +98,16 @@ function summarizeEmails() {
     const emailIds = emailsToProcess.map(email => email.id);
     PropertiesService.getScriptProperties().setProperty('WEBAPP_PENDING_ARCHIVE_IDS', JSON.stringify(emailIds));
 
-    // Phase 3: Generate consolidated AI summary using LLMService
-    const summaryResult = generateConsolidatedSummary_(emailsToProcess, {
+    // Step 5: Build summary prompt (WebApp doesn't use knowledge customization)
+    const summaryConfig = {
       style: 'economist',
       includeWebLinks: webLinks,
       emailLinks: emailLinks
-    });
+    };
+    const prompt = buildSummaryPrompt_(emailsToProcess, null, summaryConfig);
+
+    // Phase 3: Generate consolidated AI summary using LLMService
+    const summaryResult = generateConsolidatedSummary_(prompt, summaryConfig);
 
     if (!summaryResult.success) {
       return summaryResult;
