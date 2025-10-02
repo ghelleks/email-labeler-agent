@@ -1,4 +1,4 @@
-function buildCategorizePrompt_(rulesText, emails, allowed, fallback) {
+function buildCategorizePrompt_(emails, knowledge, allowed, fallback) {
   const schema = JSON.stringify({
     emails: [{ id: 'string', required_action: allowed.join('|'), reason: 'string' }]
   }, null, 2);
@@ -14,21 +14,41 @@ function buildCategorizePrompt_(rulesText, emails, allowed, fallback) {
     };
   });
 
-  return [
-    'You are an email triage assistant. Follow the Policy exactly.',
-    'Policy:',
-    rulesText,
-    '',
-    'Allowed labels: ' + allowed.join(', '),
-    "If multiple labels could apply, follow the Policy's precedence. If uncertain, choose: " + fallback + ".",
-    'Return ONLY valid JSON with this exact shape, no extra text:',
-    schema,
-    '',
-    'Emails to categorize:',
-    JSON.stringify(items, null, 2),
-    '',
-    'Return JSON for ALL items.'
-  ].join('\n');
+  const parts = [
+    'You are an email triage assistant.'
+  ];
+
+  // CONDITIONAL KNOWLEDGE INJECTION (new behavior)
+  if (knowledge && knowledge.configured) {
+    parts.push('');
+    parts.push('=== LABELING POLICY ===');
+    parts.push(knowledge.knowledge);
+
+    // Token utilization logging (when DEBUG enabled)
+    if (knowledge.metadata && knowledge.metadata.utilizationPercent) {
+      const cfg = getConfig_();
+      if (cfg.DEBUG) {
+        console.log(JSON.stringify({
+          knowledgeUtilization: knowledge.metadata.utilizationPercent,
+          estimatedTokens: knowledge.metadata.estimatedTokens,
+          modelLimit: knowledge.metadata.modelLimit
+        }, null, 2));
+      }
+    }
+  }
+
+  parts.push('');
+  parts.push('Allowed labels: ' + allowed.join(', '));
+  parts.push("If multiple labels could apply, follow the Policy's precedence. If uncertain, choose: " + fallback + ".");
+  parts.push('Return ONLY valid JSON with this exact shape, no extra text:');
+  parts.push(schema);
+  parts.push('');
+  parts.push('Emails to categorize:');
+  parts.push(JSON.stringify(items, null, 2));
+  parts.push('');
+  parts.push('Return JSON for ALL items.');
+
+  return parts.join('\n');
 }
 
 /**

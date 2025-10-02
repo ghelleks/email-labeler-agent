@@ -22,14 +22,18 @@ function run() {
   }
   ensureLabels_();
 
-  const rulesText = getRuleText_(cfg.RULE_DOC_URL || cfg.RULE_DOC_ID);
-  if (!rulesText) throw new Error('Rules text is empty - this should not happen with current implementation.');
+  const knowledge = fetchLabelingKnowledge_({
+    instructionsUrl: cfg.LABEL_INSTRUCTIONS_DOC_URL,
+    knowledgeFolderUrl: cfg.LABEL_KNOWLEDGE_FOLDER_URL,
+    maxDocs: cfg.LABEL_KNOWLEDGE_MAX_DOCS
+  });
+  // Note: No error check needed - fetchLabelingKnowledge_() handles fail-fast internally
 
   const threads = findUnprocessed_(cfg.MAX_EMAILS_PER_RUN);
   if (!threads.length) return console.log('No candidates.');
 
   const emails = minimalize_(threads, cfg.BODY_CHARS);
-  const results = categorizeWithGemini_(emails, rulesText, cfg);
+  const results = categorizeWithGemini_(emails, knowledge, cfg);
 
   const summary = Organizer.apply_(results, cfg);
   if (cfg.DEBUG) {

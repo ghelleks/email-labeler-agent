@@ -1,4 +1,4 @@
-function categorizeWithGemini_(emails, rulesText, cfg) {
+function categorizeWithGemini_(emails, knowledge, cfg) {
   const allowed = new Set(['reply_needed','review','todo','summarize']);
   const batches = [];
   for (let i = 0; i < emails.length; i += cfg.BATCH_SIZE) {
@@ -11,10 +11,26 @@ function categorizeWithGemini_(emails, rulesText, cfg) {
       results.push.apply(results, batch.map(function(e) { return { id: e.id, required_action: null, reason: 'budget-exceeded', threadId: e.threadId }; }));
       continue;
     }
-    const out = categorizeBatch_(batch, rulesText, cfg.MODEL_PRIMARY, cfg.PROJECT_ID, cfg.LOCATION, cfg.DEFAULT_FALLBACK_LABEL, cfg.GEMINI_API_KEY);
+    // Build prompt using PromptBuilder (enforces separation of concerns)
+    const prompt = buildCategorizePrompt_(batch, knowledge,
+      ['reply_needed', 'review', 'todo', 'summarize'],
+      cfg.DEFAULT_FALLBACK_LABEL);
+
+    // LLMService now receives complete prompt (no longer builds it internally)
+    const out = categorizeBatch_(prompt, cfg.MODEL_PRIMARY, cfg.PROJECT_ID,
+      cfg.LOCATION, cfg.GEMINI_API_KEY);
     if (cfg.DEBUG) {
       console.log(JSON.stringify({ batchSize: batch.length, llmRaw: out }, null, 2));
     }
+
+    // Handle parsing failure - LLMService returns null when it can't parse response
+    if (!out) {
+      results.push.apply(results, batch.map(function(e) {
+        return { id: e.id, required_action: null, reason: 'fallback-on-error', threadId: e.threadId };
+      }));
+      continue;
+    }
+
     const byId = new Map(out.map(function(o) { return [o.id, o]; }));
     for (const e of batch) {
       const r = byId.get(e.id);

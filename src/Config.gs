@@ -26,9 +26,15 @@ function getConfig_() {
     WEBAPP_ENABLED: (p.getProperty('WEBAPP_ENABLED') || 'true').toLowerCase() === 'true',
     WEBAPP_MAX_EMAILS_PER_SUMMARY: parseInt(p.getProperty('WEBAPP_MAX_EMAILS_PER_SUMMARY') || '50', 10),
     // KnowledgeService Configuration
-    LABEL_KNOWLEDGE_DOC_URL: p.getProperty('LABEL_KNOWLEDGE_DOC_URL'),
+    // Email Labeling Knowledge (INSTRUCTIONS = how to label, KNOWLEDGE = contextual reference)
+    LABEL_INSTRUCTIONS_DOC_URL: p.getProperty('LABEL_INSTRUCTIONS_DOC_URL'),
     LABEL_KNOWLEDGE_FOLDER_URL: p.getProperty('LABEL_KNOWLEDGE_FOLDER_URL'),
     LABEL_KNOWLEDGE_MAX_DOCS: parseInt(p.getProperty('LABEL_KNOWLEDGE_MAX_DOCS') || '5', 10),
+    // Reply Drafting Knowledge (future - INSTRUCTIONS = how to draft, KNOWLEDGE = context/examples)
+    REPLY_DRAFTER_INSTRUCTIONS_URL: p.getProperty('REPLY_DRAFTER_INSTRUCTIONS_URL'),
+    REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL: p.getProperty('REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL'),
+    REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS: parseInt(p.getProperty('REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS') || '5', 10),
+    // KnowledgeService Core Settings
     KNOWLEDGE_CACHE_DURATION_MINUTES: parseInt(p.getProperty('KNOWLEDGE_CACHE_DURATION_MINUTES') || '30', 10),
     KNOWLEDGE_DEBUG: (p.getProperty('KNOWLEDGE_DEBUG') || 'false').toLowerCase() === 'true',
     KNOWLEDGE_LOG_SIZE_WARNINGS: (p.getProperty('KNOWLEDGE_LOG_SIZE_WARNINGS') || 'true').toLowerCase() === 'true',
