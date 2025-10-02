@@ -123,6 +123,7 @@ function getDefaultPolicyText_() {
     '\n' +
     '## IMPORTANT CONTENT ANALYSIS GUIDELINES\n' +
     '\n' +
+    '- **Email Summary sent to myself** → review\n',
     '- **Action words**: google workspace notifications, "your order", "please", "required", "due", "review" → todo or review\n' +
     '- **Time sensitivity**: "urgent", "asap", "deadline" → todo\n' +
     '- **Question format**: personal emails, direct questions → reply_needed\n' +
