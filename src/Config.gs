@@ -24,7 +24,17 @@ function getConfig_() {
     })(),
     // Web App Configuration
     WEBAPP_ENABLED: (p.getProperty('WEBAPP_ENABLED') || 'true').toLowerCase() === 'true',
-    WEBAPP_MAX_EMAILS_PER_SUMMARY: parseInt(p.getProperty('WEBAPP_MAX_EMAILS_PER_SUMMARY') || '50', 10)
+    WEBAPP_MAX_EMAILS_PER_SUMMARY: parseInt(p.getProperty('WEBAPP_MAX_EMAILS_PER_SUMMARY') || '50', 10),
+    // KnowledgeService Configuration
+    LABEL_KNOWLEDGE_DOC_URL: p.getProperty('LABEL_KNOWLEDGE_DOC_URL'),
+    LABEL_KNOWLEDGE_FOLDER_URL: p.getProperty('LABEL_KNOWLEDGE_FOLDER_URL'),
+    LABEL_KNOWLEDGE_MAX_DOCS: parseInt(p.getProperty('LABEL_KNOWLEDGE_MAX_DOCS') || '5', 10),
+    KNOWLEDGE_CACHE_DURATION_MINUTES: parseInt(p.getProperty('KNOWLEDGE_CACHE_DURATION_MINUTES') || '30', 10),
+    KNOWLEDGE_DEBUG: (p.getProperty('KNOWLEDGE_DEBUG') || 'false').toLowerCase() === 'true',
+    KNOWLEDGE_LOG_SIZE_WARNINGS: (p.getProperty('KNOWLEDGE_LOG_SIZE_WARNINGS') || 'true').toLowerCase() === 'true',
+    // KnowledgeService Test Configuration
+    TEST_DOC_URL: p.getProperty('TEST_DOC_URL'),
+    TEST_FOLDER_URL: p.getProperty('TEST_FOLDER_URL')
   };
 }
 
