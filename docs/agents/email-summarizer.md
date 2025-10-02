@@ -1,0 +1,268 @@
+# Email Summarizer Agent
+
+The Email Summarizer is an intelligent agent that automatically processes emails labeled with `summarize` and delivers concise, well-formatted summaries directly to your inbox.
+
+## What It Does
+
+The Email Summarizer agent:
+
+- **Archives immediately** when you apply the `summarize` label (configurable, enabled by default)
+- **Retrieves** emails with the `summarize` label from the past 7 days
+- **Generates** Economist-style summaries using AI
+- **Delivers** formatted HTML summaries via email with hyperlinks and source references
+- **Relabels** processed emails as `summarized` and archives them (if not already archived)
+- **Runs** on configurable daily triggers (default: 5 AM)
+
+This agent operates independently and requires no manual intervention once configured. By default, emails are archived immediately when you apply the `summarize` label, keeping your inbox clean while the scheduled summarization process finds them via the label.
+
+## Perfect For
+
+- **Newsletters**: Get concise summaries of long newsletters
+- **Email threads**: Digest multi-message conversations
+- **Batch processing**: Summarize multiple related emails at once
+- **Daily digests**: Receive summaries on a schedule
+
+## Quick Start
+
+### Prerequisites
+
+- Complete the [basic email labeling setup](../../README.md#setup-guide) first
+- Email Summarizer is enabled by default (`SUMMARIZER_ENABLED=true`)
+
+### Setup Steps
+
+1. **Install the summarizer trigger**:
+   - In the Apps Script editor, select `installSummarizerTrigger` from the function dropdown
+   - Click the "Run" button (▶️) to install the daily trigger
+   - The Email Summarizer will run daily at 5 AM
+
+2. **Start using it**:
+   - Apply the `summarize` label to emails in Gmail
+   - Emails are archived immediately (configurable)
+   - Wait for the next daily run (or test manually by running `runSummarizerAgent` in the editor)
+   - Receive summary emails in your inbox
+
+## How It Works
+
+### Workflow
+
+1. **Label Application**: You apply the `summarize` label to one or more emails
+2. **Immediate Archive** (optional): Email is archived immediately to keep inbox clean
+3. **Scheduled Retrieval**: Daily trigger finds all emails with `summarize` label from past 7 days
+4. **AI Summarization**: Gemini AI generates consolidated summary in Economist style
+5. **Email Delivery**: Formatted HTML summary sent to your inbox with:
+   - Executive summary of key points
+   - Source email permalinks
+   - Extracted web links from emails
+6. **Cleanup**: Processed emails relabeled as `summarized` and archived
+
+### Archive-on-Label Behavior
+
+**Default behavior** (`SUMMARIZER_ARCHIVE_ON_LABEL=true`):
+- Emails are archived **immediately** when you apply the `summarize` label
+- Keeps your inbox clean while processing happens in the background
+- Summarization trigger still finds emails via the `summarize` label
+
+**Alternative behavior** (`SUMMARIZER_ARCHIVE_ON_LABEL=false`):
+- Emails remain in inbox when labeled with `summarize`
+- Only archived after summarization completes
+- Good if you want visual confirmation emails are pending summary
+
+## Configuration
+
+Add these properties to Script Properties in the Apps Script editor:
+
+### Basic Configuration
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `SUMMARIZER_ENABLED` | `true` | Enable/disable the Email Summarizer agent |
+| `SUMMARIZER_DESTINATION_EMAIL` | Your email | Email address to receive summaries |
+
+### Advanced Configuration
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `SUMMARIZER_MAX_AGE_DAYS` | `7` | Maximum age of emails to include in summaries |
+| `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` | `50` | Maximum emails to process per summary |
+| `SUMMARIZER_ARCHIVE_ON_LABEL` | `true` | Archive emails immediately when `summarize` label is applied |
+| `SUMMARIZER_DEBUG` | `false` | Enable detailed logging for the agent |
+| `SUMMARIZER_DRY_RUN` | `false` | Test mode (generates summary but doesn't send email) |
+
+### Configuration Examples
+
+**Basic setup** (just receive summaries at different email):
+```
+SUMMARIZER_DESTINATION_EMAIL = work@example.com
+```
+
+**Keep emails in inbox until summarized**:
+```
+SUMMARIZER_ARCHIVE_ON_LABEL = false
+```
+
+**Process more emails, look back further**:
+```
+SUMMARIZER_MAX_AGE_DAYS = 14
+SUMMARIZER_MAX_EMAILS_PER_SUMMARY = 100
+```
+
+**Debug mode for troubleshooting**:
+```
+SUMMARIZER_DEBUG = true
+```
+
+## Example Summary Output
+
+The Email Summarizer generates summaries in this format:
+
+```
+📧 Email Summary - October 2, 2025
+
+Executive Summary
+=================
+You received 5 emails requiring summary:
+
+• Newsletter: Tech Digest - New AI developments announced
+• Project Update: Q4 roadmap changes and timeline adjustments
+• Meeting Notes: Client kickoff meeting summary with action items
+
+Key Details
+===========
+
+1. Tech Digest Newsletter (Oct 2, 2025)
+   New AI model releases from major providers...
+   [View email in Gmail]
+
+2. Project Update from Sarah (Oct 1, 2025)
+   Q4 roadmap has been updated with new priorities...
+   [View email in Gmail]
+
+Web Links Referenced
+===================
+• https://example.com/tech-news
+• https://example.com/project-roadmap
+
+---
+Processed 5 emails. All emails have been archived and labeled as 'summarized'.
+```
+
+## Labels
+
+The Email Summarizer creates and manages these labels:
+
+- **`summarize`**: Apply this label to emails you want summarized (this is also used by core email labeling)
+- **`summarized`**: Automatically applied to processed emails (created by the agent)
+
+## Troubleshooting
+
+### Email Summarizer not running automatically
+
+**Solution**: Install the summarizer trigger by running `installSummarizerTrigger` in Apps Script editor
+
+**Solution**: Check the "Triggers" section to verify the daily trigger exists
+
+**Solution**: Verify `SUMMARIZER_ENABLED=true` in Script Properties
+
+### No summary emails being received
+
+**Solution**: Check that you have emails with the `summarize` label from the past 7 days
+
+**Solution**: Verify `SUMMARIZER_DESTINATION_EMAIL` is set to your correct email address
+
+**Solution**: Check Gmail spam folder for summary emails
+
+**Solution**: Run `runSummarizerAgent` manually in Apps Script editor to test immediately
+
+### Email Summarizer times out or fails
+
+**Solution**: Reduce `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` to a smaller number (try `25`)
+
+**Solution**: Check that `DAILY_GEMINI_BUDGET` hasn't been exceeded (see [Configuration Reference](../guides/configuration.md))
+
+**Solution**: Enable `SUMMARIZER_DEBUG=true` and check execution logs
+
+### Emails not being archived
+
+**Solution**: Verify `SUMMARIZER_ARCHIVE_ON_LABEL=true` in Script Properties
+
+**Solution**: Check that emails have the `summarize` label applied correctly
+
+**Solution**: Ensure trigger is installed and running (check Triggers section)
+
+### Duplicate summaries or processing issues
+
+**Solution**: Check execution logs for errors during summarization
+
+**Solution**: Verify only one summarizer trigger exists (remove duplicates)
+
+**Solution**: Use dry run mode (`SUMMARIZER_DRY_RUN=true`) to test without sending emails
+
+## Best Practices
+
+### When to Use the Email Summarizer
+
+- **Long newsletters**: Apply `summarize` to lengthy newsletters for quick digests
+- **Email threads**: Summarize long conversation threads before archiving
+- **Batch processing**: Label multiple emails and get one consolidated summary
+- **Regular reviews**: Label emails throughout the day, get summary the next morning
+
+### Optimization Tips
+
+- **Keep summaries focused**: Don't label too many unrelated emails at once
+- **Use max age wisely**: Default 7 days works well; extend if you label emails irregularly
+- **Archive on label**: Keep this enabled (default) for cleaner inbox management
+- **Monitor logs**: Enable debug mode occasionally to verify agent is working correctly
+
+### Workflow Recommendations
+
+**Daily workflow**:
+1. Apply `summarize` label to newsletters and long emails as they arrive
+2. Emails archive immediately (inbox stays clean)
+3. Receive consolidated summary email at 5 AM next day
+4. Review summary, click links to access original emails if needed
+
+**Weekly workflow**:
+1. Once a week, review emails marked as important
+2. Apply `summarize` to those needing deeper review
+3. Receive batch summary
+4. Use summary to prioritize which emails to read in full
+
+## Integration with Web App
+
+The Email Summarizer agent works independently but complements the [Web App Dashboard](../features/web-app.md):
+
+- **Email Summarizer**: Scheduled daily summaries, automatic processing
+- **Web App**: On-demand summaries when you need them right now
+
+You can use both together:
+- Use Email Summarizer for daily digest of accumulated emails
+- Use Web App for immediate summarization when you need quick answers
+
+## Technical Details
+
+### Implementation
+
+The Email Summarizer follows the [self-contained agent architecture](../../docs/adr/011-self-contained-agents.md):
+
+- **Independent lifecycle**: Manages own configuration, labels, and triggers
+- **Generic service layer**: Uses shared Gmail operations from `GmailService.gs`
+- **Existing AI infrastructure**: Leverages `LLMService.gs` and `PromptBuilder.gs`
+- **Full error handling**: Comprehensive error messages and dry-run support
+
+### Source Code
+
+Implementation: `src/AgentSummarizer.gs`
+
+### Architecture Decisions
+
+- [ADR-011: Self-Contained Agent Architecture](../../docs/adr/011-self-contained-agents.md)
+- [ADR-012: Generic Service Layer Pattern](../../docs/adr/012-generic-service-layer.md)
+
+## See Also
+
+- [Back to README](../../README.md)
+- [Web App Dashboard](../features/web-app.md) - On-demand summarization
+- [Configuration Reference](../guides/configuration.md) - All configuration options
+- [Troubleshooting Guide](../guides/troubleshooting.md) - General troubleshooting
+- [Development Guide](../guides/development.md) - For contributors
