@@ -99,11 +99,7 @@ function summarizeEmails() {
     PropertiesService.getScriptProperties().setProperty('WEBAPP_PENDING_ARCHIVE_IDS', JSON.stringify(emailIds));
 
     // Step 5: Build summary prompt (WebApp doesn't use agent-specific knowledge but may use global knowledge)
-    const cfg = getConfig_();
-    const globalKnowledge = fetchGlobalKnowledge_({
-      folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
-      maxDocs: cfg.GLOBAL_KNOWLEDGE_MAX_DOCS
-    });
+    const globalKnowledge = fetchGlobalKnowledge_();
 
     const summaryConfig = {
       style: 'economist',
