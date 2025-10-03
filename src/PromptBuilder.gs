@@ -189,6 +189,12 @@ function buildReplyDraftPrompt_(emailThread, knowledge) {
     parts.push('=== YOUR DRAFTING INSTRUCTIONS ===');
     parts.push(knowledge.knowledge);
 
+    // Add signature requirement
+    parts.push('');
+    parts.push('SIGNATURE REQUIREMENT:');
+    parts.push('- Sign the email with your name if specified in the instructions above');
+    parts.push('- If your name is not clear from the instructions, use "[Your name here]" as the signature');
+
     // Add source attribution if available
     if (knowledge.metadata && knowledge.metadata.sources && knowledge.metadata.sources.length > 0) {
       parts.push('');
@@ -216,14 +222,23 @@ function buildReplyDraftPrompt_(emailThread, knowledge) {
     parts.push('- Address all questions and concerns raised');
     parts.push('- Use a professional but friendly tone');
     parts.push('- End with appropriate next steps or closing');
+    parts.push('- Sign with the user\'s name from the knowledge/instructions, or use "[Your name here]" if not specified');
   }
 
   parts.push('');
   parts.push('=== EMAIL THREAD ===');
   parts.push(formatEmailThread_(emailThread));
   parts.push('');
+  parts.push('=== REPLY INSTRUCTIONS ===');
   parts.push('Draft a professional reply that addresses all points raised in the most recent email.');
-  parts.push('Return ONLY the reply text, no preamble or explanation.');
+  parts.push('');
+  parts.push('IMPORTANT FORMAT REQUIREMENTS:');
+  parts.push('- Return ONLY the email body text (no subject line, no "Subject:", no headers)');
+  parts.push('- Start directly with the greeting or body content');
+  parts.push('- End with an appropriate signature');
+  parts.push('- Sign the email with the user\'s name if provided in the drafting instructions');
+  parts.push('- If the user\'s name is not clear from the instructions, use "[Your name here]" as the signature');
+  parts.push('- Do NOT include any preamble, explanation, or meta-commentary');
 
   return parts.join('\n');
 }
