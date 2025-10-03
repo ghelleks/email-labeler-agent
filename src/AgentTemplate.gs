@@ -1,24 +1,31 @@
 /**
- * AgentTemplate demonstrates the self-contained agent architecture pattern.
+ * AgentTemplate demonstrates the dual-hook agent architecture pattern.
  *
- * This template shows how to create agents that manage their complete lifecycle:
+ * This template shows how to create agents using the dual-hook system:
  * - Configuration management (self-managed properties)
  * - Label management (creates own labels)
- * - Trigger management (manages own scheduling)
+ * - onLabel hook (immediate per-email actions)
+ * - postLabel hook (inbox-wide scanning)
  * - Service integration (uses generic service layer)
  *
  * See ADR-011: Self-Contained Agent Architecture for detailed guidance.
+ * See ADR-018: Dual-Hook Agent Architecture for hook patterns.
  */
 
 /**
- * TEMPLATE: Self-Contained Agent Pattern
+ * TEMPLATE: Dual-Hook Agent Pattern
  *
  * Copy this template and customize for your agent:
  * 1. Update configuration function with your agent's settings
- * 2. Update label management for your agent's labels
- * 3. Implement your agent's main logic
- * 4. Add trigger management if needed for scheduled execution
- * 5. Register your agent with appropriate label and options
+ * 2. Implement onLabel hook for immediate per-email actions (optional)
+ * 3. Implement postLabel hook for inbox-wide scanning (optional)
+ * 4. At least one hook (onLabel or postLabel) must be provided
+ * 5. Register your agent with dual-hook object
+ *
+ * Hook Selection Guide:
+ * - onLabel only: Immediate actions on newly-classified emails
+ * - postLabel only: Periodic inbox scanning (no immediate response)
+ * - Both hooks: Immediate action + catch manually-labeled emails
  */
 // ============================================================================
 // TEMPLATE: Configuration Management (Self-Contained Pattern)
@@ -63,15 +70,18 @@ function ensureTemplateAgentLabels_() {
 }
 
 // ============================================================================
-// TEMPLATE: Main Agent Logic
+// TEMPLATE: onLabel Hook - Immediate Per-Email Actions
 // ============================================================================
 
 /**
- * Template agent handler function
+ * Template agent onLabel handler (immediate action on newly-classified emails)
  * ctx provides: label, decision, threadId, thread (GmailThread), cfg, dryRun, log(msg)
  * Returns { status: 'ok'|'skip'|'retry'|'error', info?: string }
+ *
+ * This hook fires immediately as each email is labeled during classification.
+ * Use for actions that should happen right away (forward, draft, notify).
  */
-function templateAgentHandler(ctx) {
+function templateAgentOnLabel_(ctx) {
   try {
     // Get agent-specific configuration
     const config = getTemplateAgentConfig_();
@@ -107,13 +117,90 @@ function templateAgentHandler(ctx) {
     // Example: Add processed label to show agent ran
     ctx.thread.addLabel(processedLabel);
 
-    return { status: 'ok', info: 'template agent processed thread' };
+    return { status: 'ok', info: 'template agent onLabel processed thread' };
 
   } catch (error) {
     // Use shared utility for standardized error handling
-    const errorResult = standardErrorHandler_(error, 'templateAgent');
-    ctx.log('templateAgent error: ' + errorResult.message);
+    const errorResult = standardErrorHandler_(error, 'templateAgent onLabel');
+    ctx.log('templateAgent onLabel error: ' + errorResult.message);
     return { status: 'error', info: errorResult.message };
+  }
+}
+
+// ============================================================================
+// TEMPLATE: postLabel Hook - Inbox-Wide Scanning
+// ============================================================================
+
+/**
+ * Template agent postLabel handler (inbox scan after all labeling complete)
+ * No parameters - scans inbox independently for emails with target label
+ *
+ * This hook fires once after all classification/labeling is complete.
+ * Use for catching manually-labeled emails, cleanup operations, batch processing.
+ * Implement idempotency to skip already-processed emails.
+ */
+function templateAgentPostLabel_() {
+  try {
+    const config = getTemplateAgentConfig_();
+
+    if (!config.TEMPLATE_ENABLED) {
+      return;
+    }
+
+    if (config.TEMPLATE_DEBUG) {
+      Logger.log('templateAgent postLabel: Starting inbox scan');
+    }
+
+    // Find all emails with target label (adjust label name as needed)
+    const query = 'in:inbox label:template_target';  // Replace with your label
+    const threads = GmailApp.search(query);
+
+    if (threads.length === 0) {
+      if (config.TEMPLATE_DEBUG) {
+        Logger.log('templateAgent postLabel: No emails found');
+      }
+      return;
+    }
+
+    Logger.log(`templateAgent postLabel: Found ${threads.length} emails to process`);
+
+    let processed = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < threads.length; i++) {
+      const thread = threads[i];
+      const threadId = thread.getId();
+
+      try {
+        // TODO: Implement idempotency check
+        // Example: Check if thread has been processed before
+        // const processedLabel = GmailApp.getUserLabelByName('template_processed');
+        // if (thread.getLabels().some(l => l.getName() === 'template_processed')) {
+        //   skipped++;
+        //   continue;
+        // }
+
+        // TODO: Implement your processing logic here
+        if (config.TEMPLATE_DRY_RUN) {
+          Logger.log(`templateAgent postLabel: DRY RUN - Would process thread ${threadId}`);
+        } else {
+          // Your processing logic here
+          // Example: thread.addLabel(processedLabel);
+        }
+
+        processed++;
+
+      } catch (error) {
+        Logger.log(`templateAgent postLabel: Error processing thread ${threadId} - ${error.toString()}`);
+      }
+    }
+
+    if (processed > 0) {
+      Logger.log(`templateAgent postLabel completed: processed ${processed}, skipped ${skipped}`);
+    }
+
+  } catch (error) {
+    Logger.log('templateAgent postLabel error: ' + error.toString());
   }
 }
 
@@ -295,7 +382,7 @@ function buildTemplatePromptWithKnowledge_(items, knowledge, config) {
 }
 
 // ============================================================================
-// TEMPLATE: Agent Registration
+// TEMPLATE: Agent Registration (Dual-Hook Pattern)
 // ============================================================================
 
 if (typeof AGENT_MODULES === 'undefined') {
@@ -306,18 +393,54 @@ AGENT_MODULES.push(function(api) {
   /**
    * Register template agent for demonstration
    * Disabled by default - enable for testing
+   *
+   * DUAL-HOOK PATTERN OPTIONS:
+   *
+   * Option 1: Both hooks (recommended for action agents)
+   * - Immediate action on classification (onLabel)
+   * - Inbox scan for manually-labeled emails (postLabel)
    */
   api.register(
-    'summarize',        // Label to trigger on
+    'template_target',  // Label to trigger on (replace with your label)
     'templateAgent',    // Agent name
-    templateAgentHandler, // Handler function
+    {
+      onLabel: templateAgentOnLabel_,    // Immediate per-email action
+      postLabel: templateAgentPostLabel_  // Inbox-wide scan
+    },
     {
       runWhen: 'afterLabel',  // Run after labeling (respects dry-run)
       timeoutMs: 30000,       // Soft timeout guidance
-      enabled: false          // Disabled by default
-      // ADR-017: Removed idempotentKey - agents implement own checks as needed
+      enabled: false          // Disabled by default (enable for testing)
     }
   );
+
+  /**
+   * Option 2: onLabel only
+   * Use when you only need immediate action, no inbox scanning
+   */
+  // api.register(
+  //   'template_target',
+  //   'templateAgent',
+  //   {
+  //     onLabel: templateAgentOnLabel_,
+  //     postLabel: null
+  //   },
+  //   { runWhen: 'afterLabel', enabled: false }
+  // );
+
+  /**
+   * Option 3: postLabel only
+   * Use for periodic processing without immediate response
+   */
+  // api.register(
+  //   'template_target',
+  //   'templateAgent',
+  //   {
+  //     onLabel: null,
+  //     postLabel: templateAgentPostLabel_
+  //   },
+  //   { enabled: false }
+  // );
 });
 
 

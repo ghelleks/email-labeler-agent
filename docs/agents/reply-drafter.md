@@ -7,16 +7,16 @@ The Reply Drafter is an intelligent agent that automatically creates draft repli
 The Reply Drafter agent:
 
 - **Monitors** emails labeled as `reply_needed` by the core classification system
-- **Processes both new and existing emails** through dual execution modes (see below)
+- **Processes both new and existing emails** through dual-hook architecture (see below)
 - **Checks idempotency** to ensure drafts aren't created multiple times
 - **Fetches optional knowledge** from Google Drive for personalized drafting style
 - **Retrieves full thread context** including all messages in the conversation
 - **Generates professional drafts** using AI with full thread awareness
 - **Creates Gmail draft replies** automatically attached to the original thread
-- **Runs continuously** via both immediate processing and scheduled batch runs
+- **Runs automatically** via the hourly email processing trigger (no separate trigger needed)
 - **Respects dry-run mode** for safe testing before enabling
 
-This agent operates automatically through two complementary execution modes, requiring no manual intervention once configured.
+This agent operates automatically using the dual-hook pattern, requiring no manual intervention once configured.
 
 ## Perfect For
 
@@ -36,67 +36,67 @@ This agent operates automatically through two complementary execution modes, req
 
 ### Setup Steps
 
-1. **Enable the agent** (already enabled by default):
-   - The Reply Drafter is active as soon as emails receive the `reply_needed` label
-   - Agent handler runs automatically during core email processing (no trigger needed)
-   - Works immediately with default professional drafting style
-
-2. **Install scheduled batch trigger** (recommended):
+1. **Install core email processing trigger** (required):
    - Open Apps Script editor: `npm run open:personal` (or `:work`)
-   - Select `installReplyDrafterTrigger` from the function dropdown
-   - Click the Run button (▶️) to install the trigger
+   - Select `installTrigger` from the function dropdown
+   - Click the Run button (▶️) to install the hourly trigger
    - Grant necessary permissions when prompted
-   - The scheduled batch will run every 30 minutes to process existing labeled emails
+   - Reply Drafter runs automatically as part of this hourly cycle
+
+2. **Enable the agent** (already enabled by default):
+   - The Reply Drafter is active as soon as emails receive the `reply_needed` label
+   - Works immediately with default professional drafting style
+   - Both hooks (onLabel + postLabel) run during each hourly email processing cycle
 
 3. **Customize drafting style** (optional):
    - Create a Google Doc with your drafting instructions (tone, style, length)
    - Configure `REPLY_DRAFTER_INSTRUCTIONS_URL` with the document URL
    - See [Knowledge Customization](#knowledge-customization) section below
 
-3. **Add contextual knowledge** (optional):
+4. **Add contextual knowledge** (optional):
    - Create a Google Drive folder with example replies or reference material
    - Configure `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL` with the folder URL
    - Set `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` to limit documents fetched
 
-4. **Test the agent**:
+5. **Test the agent**:
    - Enable debug mode: `REPLY_DRAFTER_DEBUG=true`
-   - Run the core email labeling process
+   - Run the core email labeling process (or wait for hourly trigger)
    - Check Gmail for draft replies on `reply_needed` emails
-   - Review execution logs for detailed operation
+   - Review execution logs for onLabel and postLabel handler execution
 
 ## How It Works
 
-### Dual Execution Modes
+### Dual-Hook Architecture
 
-The Reply Drafter operates in two complementary modes to ensure comprehensive draft coverage:
+The Reply Drafter uses a **dual-hook pattern** to ensure comprehensive draft coverage within the hourly email processing cycle:
 
-#### Mode 1: Agent Handler (Immediate Processing)
+#### Hook 1: onLabel (Immediate Processing)
 Runs during the core email classification pipeline:
 - **Trigger**: Email is newly classified as `reply_needed`
-- **Timing**: Immediately after labeling completes
+- **Timing**: Immediately after labeling completes during `Organizer.apply_()`
 - **Coverage**: Only newly-classified emails
 - **Use case**: Fast draft creation for incoming emails
 
-#### Mode 2: Scheduled Batch Processing (Comprehensive Coverage)
-Runs every 30 minutes on a scheduled trigger:
-- **Trigger**: Time-based (every 30 minutes)
-- **Timing**: Independent of email classification
+#### Hook 2: postLabel (Inbox Scanning)
+Runs after all classification/labeling is complete:
+- **Trigger**: After `Organizer.apply_()` finishes all labeling
+- **Timing**: Once per hourly email processing cycle
 - **Coverage**: ALL emails with `reply_needed` label in inbox
-- **Use case**: Manually labeled emails, retries for failed drafts, emails labeled before agent existed
+- **Use case**: Manually labeled emails, retries for failed drafts, emails labeled before agent was deployed
 
-**Why both modes?**
-The agent handler only processes emails during classification. It never sees:
+**Why both hooks?**
+The onLabel hook only processes emails during active classification. It never sees:
 - Emails you manually label with `reply_needed`
 - Emails that had `reply_needed` before the agent was deployed
 - Emails where draft creation previously failed
 
-The scheduled batch processor fills this gap by searching for ALL `reply_needed` emails and creating drafts for any that don't have one yet.
+The postLabel hook fills this gap by scanning the inbox for ALL `reply_needed` emails and creating drafts for any that don't have one yet. Both hooks run in the same hourly email processing cycle.
 
-### Workflow (Both Modes)
+### Workflow (Both Hooks)
 
 1. **Email Discovery**:
-   - Agent handler: Receives email from classification pipeline
-   - Scheduled batch: Searches inbox for `label:reply_needed`
+   - onLabel: Receives email context from classification pipeline
+   - postLabel: Searches inbox for `in:inbox label:reply_needed`
 2. **Idempotency Check**: Verifies no draft already exists for the thread
 3. **Knowledge Fetching**: Retrieves optional instructions and context from Google Drive
 4. **Thread Retrieval**: Fetches full email conversation (all messages in thread)
@@ -145,23 +145,23 @@ Add these properties to Script Properties in the Apps Script editor:
 
 ### Trigger Installation
 
-The scheduled batch processor requires manual trigger installation:
+The Reply Drafter runs automatically via the dual-hook pattern within the hourly email processing trigger:
 
-1. **Open Apps Script editor**:
+1. **Install core email processing trigger** (required):
    ```bash
    npm run open:personal  # or open:work for work account
    ```
 
-2. **Install trigger**:
-   - Select `installReplyDrafterTrigger` from the function dropdown
+2. **Select and run trigger installer**:
+   - Select `installTrigger` from the function dropdown
    - Click the Run button (▶️)
    - Grant necessary permissions when prompted
 
 3. **Verify installation**:
    - Click "Triggers" in the left sidebar
-   - Confirm `runReplyDrafter` trigger appears with "Every 30 minutes" schedule
+   - Confirm `run` trigger appears with "Every hour" schedule
 
-**Note**: The agent handler requires no trigger installation - it runs automatically as part of the core email processing pipeline.
+**Note**: Both onLabel and postLabel hooks run automatically within this hourly trigger. No separate trigger needed for the Reply Drafter.
 
 ### Configuration Examples
 
@@ -169,7 +169,7 @@ The scheduled batch processor requires manual trigger installation:
 ```
 REPLY_DRAFTER_ENABLED = true
 ```
-**Note**: Also install the scheduled batch trigger (see above) for comprehensive coverage.
+**Note**: Runs automatically via hourly email processing trigger (no separate trigger needed).
 
 **Custom drafting style** (instructions only):
 ```
@@ -569,40 +569,42 @@ The Reply Drafter follows the [self-contained agent architecture](../../docs/adr
 
 - **Self-registration**: Automatically registers with `AGENT_MODULES.push()` pattern
 - **Independent configuration**: Manages own Script Properties without modifying core Config.gs
-- **Dual-mode execution**: Agent handler (no trigger) + scheduled batch processor (30-minute trigger)
+- **Dual-hook execution**: onLabel (immediate) + postLabel (inbox scan) within hourly trigger
 - **Idempotent execution**: Safe to re-run without side effects
 - **Full error handling**: Comprehensive logging and graceful degradation
 
-### Dual Execution Architecture
+### Dual-Hook Architecture
 
-The Reply Drafter mirrors the Email Summarizer's dual-mode pattern:
+The Reply Drafter uses the dual-hook pattern introduced in ADR-018:
 
-**Agent Handler** (`processReplyNeeded_`):
-- Runs within classification pipeline
-- No trigger required
+**onLabel Hook** (`replyDrafterOnLabel_`):
+- Runs during `Organizer.apply_()` for each email being labeled
+- No trigger required (runs within hourly email processing)
 - Processes newly-classified emails only
 - Fast, immediate draft creation
 
-**Scheduled Batch** (`runReplyDrafter`):
-- Runs every 30 minutes via time trigger
-- Requires manual trigger installation
+**postLabel Hook** (`replyDrafterPostLabelScan_`):
+- Runs via `Agents.runPostLabelHandlers()` after all labeling complete
+- No separate trigger required (runs within hourly email processing)
 - Processes ALL `reply_needed` emails in inbox
 - Catches manually labeled emails, retries, and historical emails
 
-This architecture ensures comprehensive coverage - no `reply_needed` email goes without a draft, regardless of how it got the label.
+This architecture ensures comprehensive coverage - no `reply_needed` email goes without a draft, regardless of how it got the label. Both hooks run automatically within the single hourly email processing trigger.
 
 ### Integration with Core System
 
 **Agent Registration:**
 ```javascript
-// From AgentReplyDrafter.gs
+// From AgentReplyDrafter.gs - Dual-Hook Pattern
 AGENT_MODULES.push(function(api) {
   api.register(
     'reply_needed',           // Label to trigger on
     'ReplyDrafter',           // Agent name
-    processReplyNeeded_,      // Handler function
     {
-      idempotentKey: function(ctx) { return 'replyDrafter:' + ctx.threadId; },
+      onLabel: replyDrafterOnLabel_,           // Immediate per-email action
+      postLabel: replyDrafterPostLabelScan_    // Inbox-wide scan
+    },
+    {
       runWhen: 'afterLabel',  // Run after labeling
       timeoutMs: 30000,       // Soft timeout guidance
       enabled: true           // Enabled by default
@@ -658,13 +660,13 @@ const draftText = generateReplyDraft_(prompt, model, projectId, location, apiKey
 
 **Solution**: Check that core email labeling is applying `reply_needed` labels
 
-**Solution**: Install scheduled batch trigger using `installReplyDrafterTrigger` function
+**Solution**: Verify core email processing trigger (`installTrigger`) is installed and running hourly
 
-**Solution**: Enable `REPLY_DRAFTER_DEBUG=true` and check execution logs
+**Solution**: Enable `REPLY_DRAFTER_DEBUG=true` and check execution logs for both onLabel and postLabel execution
 
 **Solution**: Test with `REPLY_DRAFTER_DRY_RUN=true` to verify agent runs without draft creation
 
-**Solution**: For manually labeled emails, wait for next 30-minute scheduled run or run `runReplyDrafter` manually in Apps Script editor
+**Solution**: For manually labeled emails, postLabel hook will process them on next hourly run
 
 ### Drafts not appearing in Gmail
 
@@ -802,6 +804,7 @@ Supporting services:
 - [ADR-010: PromptBuilder and LLMService Separation](../../docs/adr/010-promptbuilder-llmservice-separation.md) - Prompt engineering patterns
 - [ADR-011: Self-Contained Agent Architecture](../../docs/adr/011-self-contained-agents.md) - Independent agent lifecycle
 - [ADR-015: INSTRUCTIONS vs KNOWLEDGE Naming Convention](../../docs/adr/015-instructions-knowledge-naming.md) - Configuration property naming
+- [ADR-018: Dual-Hook Agent Architecture](../../docs/adr/018-dual-hook-agent-architecture.md) - Current execution model (onLabel + postLabel)
 
 ### Agent Context API
 

@@ -9,16 +9,16 @@
  * - Creates Gmail draft replies automatically
  * - Runs after labeling (respects dry-run mode)
  *
- * Execution Modes:
- * 1. Agent Handler: Runs during email classification (immediate draft creation)
- * 2. Scheduled Batch: Runs every 30 minutes to process existing labeled emails
+ * Dual-Hook Architecture:
+ * 1. onLabel: Runs during classification (immediate draft for newly-classified emails)
+ * 2. postLabel: Runs after all labeling (scans inbox for manually-labeled emails)
  *
  * Features:
  * - Self-contained: manages own config without core Config.gs changes
  * - Idempotent: skips emails that already have drafts
  * - Knowledge-aware: optionally uses drafting instructions and context
  * - Thread-aware: processes full conversation history
- * - Batch processing: handles manually labeled emails and retries
+ * - Dual-mode: immediate + inbox scanning without separate trigger
  * - Full error handling and dry-run support
  */
 
@@ -291,29 +291,29 @@ function processReplyNeeded_(ctx) {
 }
 
 // ============================================================================
-// Scheduled Batch Processing
+// postLabel Handler - Inbox-Wide Scanning
 // ============================================================================
 
 /**
- * Process all existing emails with "reply_needed" label
- * Runs on a schedule (default: every 30 minutes) to handle:
+ * Scan all existing emails with "reply_needed" label (postLabel hook)
+ * Runs after all classification/labeling complete to handle:
  * - Manually labeled emails
  * - Emails labeled before agent was deployed
  * - Failed draft creations that need retry
  *
- * This complements the agent handler which runs during classification.
+ * This complements the onLabel handler which runs during classification.
+ * No parameters - scans inbox independently and uses idempotency to skip processed emails.
  */
-function runReplyDrafter() {
+function replyDrafterPostLabelScan_() {
   try {
     const config = getReplyDrafterConfig_();
 
     if (!config.REPLY_DRAFTER_ENABLED) {
-      console.log('Reply Drafter is disabled');
-      return { success: false, reason: 'disabled' };
+      return;
     }
 
     if (config.REPLY_DRAFTER_DEBUG) {
-      console.log('Reply Drafter: Starting scheduled batch run');
+      Logger.log('Reply Drafter postLabel: Starting inbox scan');
     }
 
     // Find all emails with "reply_needed" label in inbox
@@ -322,12 +322,14 @@ function runReplyDrafter() {
 
     if (threads.length === 0) {
       if (config.REPLY_DRAFTER_DEBUG) {
-        console.log('Reply Drafter: No emails found with reply_needed label');
+        Logger.log('Reply Drafter postLabel: No emails found with reply_needed label');
       }
-      return { success: true, reason: 'no_emails', processed: 0 };
+      return;
     }
 
-    console.log(`Reply Drafter: Found ${threads.length} emails with reply_needed label`);
+    if (config.REPLY_DRAFTER_DEBUG) {
+      Logger.log(`Reply Drafter postLabel: Found ${threads.length} emails with reply_needed label`);
+    }
 
     let processed = 0;
     let skipped = 0;
@@ -342,7 +344,7 @@ function runReplyDrafter() {
         if (draftExistsForThread_(threadId)) {
           skipped++;
           if (config.REPLY_DRAFTER_DEBUG) {
-            console.log(`Reply Drafter: Skipping thread ${threadId} (draft already exists)`);
+            Logger.log(`Reply Drafter postLabel: Skipping thread ${threadId} (draft already exists)`);
           }
           continue;
         }
@@ -350,7 +352,7 @@ function runReplyDrafter() {
         // Get thread data
         const threadData = getEmailThread_(threadId);
         if (!threadData || !threadData.messages || threadData.messages.length === 0) {
-          console.log(`Reply Drafter: Skipping thread ${threadId} (no messages)`);
+          Logger.log(`Reply Drafter postLabel: Skipping thread ${threadId} (no messages)`);
           skipped++;
           continue;
         }
@@ -360,7 +362,7 @@ function runReplyDrafter() {
           // Log knowledge config once at start
           const hasInstructions = !!config.REPLY_DRAFTER_INSTRUCTIONS_URL;
           const hasFolder = !!config.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL;
-          console.log('Reply Drafter: Knowledge configuration: instructions=' + hasInstructions + ', folder=' + hasFolder);
+          Logger.log('Reply Drafter postLabel: Knowledge configuration: instructions=' + hasInstructions + ', folder=' + hasFolder);
         }
 
         const knowledge = fetchReplyKnowledge_({
@@ -372,10 +374,10 @@ function runReplyDrafter() {
         if (config.REPLY_DRAFTER_DEBUG && i === 0) {
           // Log knowledge load result once at start
           if (knowledge.configured) {
-            console.log('Reply Drafter: ✓ Loaded ' + knowledge.metadata.docCount + ' documents (' +
+            Logger.log('Reply Drafter postLabel: ✓ Loaded ' + knowledge.metadata.docCount + ' documents (' +
                         knowledge.metadata.utilizationPercent + ' utilization)');
           } else {
-            console.log('Reply Drafter: ℹ No knowledge configured - using basic drafting instructions');
+            Logger.log('Reply Drafter postLabel: ℹ No knowledge configured - using basic drafting instructions');
           }
         }
 
@@ -392,7 +394,7 @@ function runReplyDrafter() {
         // Generate reply draft
         let draftText;
         if (config.REPLY_DRAFTER_DRY_RUN) {
-          console.log(`Reply Drafter: DRY RUN - Would generate draft for thread ${threadId}`);
+          Logger.log(`Reply Drafter postLabel: DRY RUN - Would generate draft for thread ${threadId}`);
           draftText = '[DRY RUN] Draft would be generated here';
         } else {
           draftText = generateReplyDraft_(prompt, model, projectId, location, apiKey);
@@ -403,76 +405,31 @@ function runReplyDrafter() {
           const draftResult = createDraftReply_(threadId, draftText);
 
           if (!draftResult.success) {
-            console.log(`Reply Drafter: Failed to create draft for thread ${threadId} - ${draftResult.error}`);
+            Logger.log(`Reply Drafter postLabel: Failed to create draft for thread ${threadId} - ${draftResult.error}`);
             errors++;
             continue;
           }
 
-          console.log(`Reply Drafter: Created draft for thread ${threadId}`);
+          Logger.log(`Reply Drafter postLabel: Created draft for thread ${threadId}`);
         }
 
         processed++;
 
       } catch (error) {
         errors++;
-        console.log(`Reply Drafter: Error processing thread ${threadId} - ${error.toString()}`);
+        Logger.log(`Reply Drafter postLabel: Error processing thread ${threadId} - ${error.toString()}`);
       }
     }
 
-    const summary = `Reply Drafter completed: processed ${processed}, skipped ${skipped}, errors ${errors} (total: ${threads.length})`;
-    console.log(summary);
-
-    return {
-      success: true,
-      total: threads.length,
-      processed: processed,
-      skipped: skipped,
-      errors: errors,
-      message: summary
-    };
+    if (processed > 0 || errors > 0) {
+      Logger.log(`Reply Drafter postLabel completed: processed ${processed}, skipped ${skipped}, errors ${errors} (total: ${threads.length})`);
+    } else if (config.REPLY_DRAFTER_DEBUG) {
+      Logger.log(`Reply Drafter postLabel: All ${threads.length} emails already have drafts`);
+    }
 
   } catch (error) {
-    const errorMsg = 'Reply Drafter scheduled run error: ' + error.toString();
-    console.log(errorMsg);
-    return { success: false, error: errorMsg };
+    Logger.log('Reply Drafter postLabel error: ' + error.toString());
   }
-}
-
-// ============================================================================
-// Trigger Management (Self-Contained)
-// ============================================================================
-
-/**
- * Install trigger for Reply Drafter batch processing
- * Default: runs every 30 minutes to process existing reply_needed emails
- */
-function installReplyDrafterTrigger() {
-  // Use shared utility for trigger management (30-minute interval)
-  const result = createTimeTrigger_('runReplyDrafter', {
-    type: 'minutes',
-    interval: 30
-  });
-
-  if (result.success) {
-    console.log('Reply Drafter trigger installed successfully (every 30 minutes)');
-  }
-  return result;
-}
-
-/**
- * Remove all Reply Drafter triggers
- */
-function deleteReplyDrafterTriggers_() {
-  // Use shared utility for trigger cleanup
-  return deleteTriggersByFunction_('runReplyDrafter');
-}
-
-/**
- * List Reply Drafter triggers for debugging
- */
-function listReplyDrafterTriggers() {
-  // Use shared utility for trigger listing
-  return listTriggersByFunction_('runReplyDrafter');
 }
 
 // ============================================================================
@@ -487,16 +444,22 @@ AGENT_MODULES.push(function(api) {
   /**
    * Register Reply Drafter agent for "reply_needed" label
    * Agent generates draft replies for emails requiring responses
+   *
+   * Uses dual-hook pattern:
+   * - onLabel: Immediate draft creation during classification
+   * - postLabel: Inbox scan to catch manually-labeled emails
    */
   api.register(
     'reply_needed',           // Label to trigger on
     'ReplyDrafter',           // Agent name
-    processReplyNeeded_,      // Handler function
+    {
+      onLabel: processReplyNeeded_,      // Immediate per-email handler
+      postLabel: replyDrafterPostLabelScan_  // Inbox-wide scan handler
+    },
     {
       runWhen: 'afterLabel',  // Run after labeling (respects dry-run)
       timeoutMs: 30000,       // Soft timeout guidance
       enabled: true           // Enabled by default
-      // ADR-017: Removed idempotentKey - agent checks for existing drafts (line 58)
     }
   );
 });
