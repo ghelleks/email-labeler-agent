@@ -1,4 +1,4 @@
-function buildCategorizePrompt_(emails, knowledge, allowed, fallback) {
+function buildCategorizePrompt_(emails, knowledge, allowed, fallback, globalKnowledge) {
   const schema = JSON.stringify({
     emails: [{ id: 'string', required_action: allowed.join('|'), reason: 'string' }]
   }, null, 2);
@@ -18,7 +18,26 @@ function buildCategorizePrompt_(emails, knowledge, allowed, fallback) {
     'You are an email triage assistant.'
   ];
 
-  // CONDITIONAL KNOWLEDGE INJECTION (new behavior)
+  // GLOBAL KNOWLEDGE INJECTION (applies to ALL prompts)
+  if (globalKnowledge && globalKnowledge.configured) {
+    parts.push('');
+    parts.push('=== GLOBAL KNOWLEDGE ===');
+    parts.push(globalKnowledge.knowledge);
+
+    // Token utilization logging (when DEBUG enabled)
+    if (globalKnowledge.metadata && globalKnowledge.metadata.utilizationPercent) {
+      const cfg = getConfig_();
+      if (cfg.DEBUG) {
+        Logger.log(JSON.stringify({
+          globalKnowledgeUtilization: globalKnowledge.metadata.utilizationPercent,
+          estimatedTokens: globalKnowledge.metadata.estimatedTokens,
+          modelLimit: globalKnowledge.metadata.modelLimit
+        }, null, 2));
+      }
+    }
+  }
+
+  // AGENT-SPECIFIC KNOWLEDGE INJECTION (labeling policy)
   if (knowledge && knowledge.configured) {
     parts.push('');
     parts.push('=== LABELING POLICY ===');
@@ -58,7 +77,7 @@ function buildCategorizePrompt_(emails, knowledge, allowed, fallback) {
  * @param {Object} config - Configuration object with emailLinks, includeWebLinks
  * @returns {string} - Formatted prompt for AI summarization
  */
-function buildSummaryPrompt_(emailContents, knowledge, config) {
+function buildSummaryPrompt_(emailContents, knowledge, config, globalKnowledge) {
   // Build email reference mapping with subjects and Gmail URLs for the AI
   let emailReferenceMap = 'EMAIL REFERENCE MAP:\n';
   for (let i = 0; i < emailContents.length; i++) {
@@ -92,7 +111,27 @@ function buildSummaryPrompt_(emailContents, knowledge, config) {
     `Please create a consolidated summary of these ${emailContents.length} emails in the style of "The Economist's World in Brief" - concise, direct, and informative.`
   ];
 
-  // CONDITIONAL KNOWLEDGE INJECTION (new behavior)
+  // GLOBAL KNOWLEDGE INJECTION (applies to ALL prompts)
+  if (globalKnowledge && globalKnowledge.configured) {
+    promptParts.push('');
+    promptParts.push('=== GLOBAL KNOWLEDGE ===');
+    promptParts.push(globalKnowledge.knowledge);
+
+    // Token utilization logging (when SUMMARIZER_DEBUG or DEBUG enabled)
+    if (globalKnowledge.metadata && globalKnowledge.metadata.utilizationPercent) {
+      const cfg = getConfig_();
+      const summarizerCfg = getSummarizerConfig_();
+      if (cfg.DEBUG || summarizerCfg.SUMMARIZER_DEBUG) {
+        Logger.log(JSON.stringify({
+          globalKnowledgeUtilization: globalKnowledge.metadata.utilizationPercent,
+          estimatedTokens: globalKnowledge.metadata.estimatedTokens,
+          modelLimit: globalKnowledge.metadata.modelLimit
+        }, null, 2));
+      }
+    }
+  }
+
+  // AGENT-SPECIFIC KNOWLEDGE INJECTION (summarization guidelines)
   if (knowledge && knowledge.configured) {
     promptParts.push('');
     promptParts.push('=== SUMMARIZATION GUIDELINES ===');
@@ -180,10 +219,29 @@ function formatEmailThread_(emailThread) {
  * @param {Object} knowledge - Knowledge object from KnowledgeService (optional)
  * @returns {string} - Complete prompt for reply generation
  */
-function buildReplyDraftPrompt_(emailThread, knowledge) {
+function buildReplyDraftPrompt_(emailThread, knowledge, globalKnowledge) {
   const parts = ['You are drafting a professional email reply.'];
 
-  // CONDITIONAL KNOWLEDGE INJECTION
+  // GLOBAL KNOWLEDGE INJECTION (applies to ALL prompts)
+  if (globalKnowledge && globalKnowledge.configured) {
+    parts.push('');
+    parts.push('=== GLOBAL KNOWLEDGE ===');
+    parts.push(globalKnowledge.knowledge);
+
+    // Token utilization logging (when REPLY_DRAFTER_DEBUG or DEBUG enabled)
+    if (globalKnowledge.metadata && globalKnowledge.metadata.utilizationPercent) {
+      const cfg = getConfig_();
+      if (cfg.DEBUG || cfg.REPLY_DRAFTER_DEBUG) {
+        Logger.log(JSON.stringify({
+          globalKnowledgeUtilization: globalKnowledge.metadata.utilizationPercent,
+          estimatedTokens: globalKnowledge.metadata.estimatedTokens,
+          modelLimit: globalKnowledge.metadata.modelLimit
+        }, null, 2));
+      }
+    }
+  }
+
+  // AGENT-SPECIFIC KNOWLEDGE INJECTION (reply drafting instructions)
   if (knowledge && knowledge.configured) {
     parts.push('');
     parts.push('=== YOUR DRAFTING INSTRUCTIONS ===');

@@ -98,13 +98,19 @@ function summarizeEmails() {
     const emailIds = emailsToProcess.map(email => email.id);
     PropertiesService.getScriptProperties().setProperty('WEBAPP_PENDING_ARCHIVE_IDS', JSON.stringify(emailIds));
 
-    // Step 5: Build summary prompt (WebApp doesn't use knowledge customization)
+    // Step 5: Build summary prompt (WebApp doesn't use agent-specific knowledge but may use global knowledge)
+    const cfg = getConfig_();
+    const globalKnowledge = fetchGlobalKnowledge_({
+      folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
+      maxDocs: cfg.GLOBAL_KNOWLEDGE_MAX_DOCS
+    });
+
     const summaryConfig = {
       style: 'economist',
       includeWebLinks: webLinks,
       emailLinks: emailLinks
     };
-    const prompt = buildSummaryPrompt_(emailsToProcess, null, summaryConfig);
+    const prompt = buildSummaryPrompt_(emailsToProcess, null, summaryConfig, globalKnowledge);
 
     // Phase 3: Generate consolidated AI summary using LLMService
     const summaryResult = generateConsolidatedSummary_(prompt, summaryConfig);

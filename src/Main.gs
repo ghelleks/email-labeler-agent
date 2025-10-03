@@ -45,11 +45,27 @@ function run() {
     }
   }
 
+  // Fetch global knowledge (shared across all AI operations)
+  const globalKnowledge = fetchGlobalKnowledge_({
+    folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
+    maxDocs: cfg.GLOBAL_KNOWLEDGE_MAX_DOCS
+  });
+
+  if (cfg.DEBUG) {
+    if (globalKnowledge.configured) {
+      console.log('Global Knowledge: ✓ Loaded ' + globalKnowledge.metadata.docCount + ' documents, ' +
+                  globalKnowledge.metadata.estimatedTokens + ' tokens (' +
+                  globalKnowledge.metadata.utilizationPercent + ' utilization)');
+    } else {
+      console.log('Global Knowledge: ℹ No global knowledge configured');
+    }
+  }
+
   const threads = findUnprocessed_(cfg.MAX_EMAILS_PER_RUN);
   if (!threads.length) return console.log('No candidates.');
 
   const emails = minimalize_(threads, cfg.BODY_CHARS);
-  const results = categorizeWithGemini_(emails, knowledge, cfg);
+  const results = categorizeWithGemini_(emails, knowledge, cfg, globalKnowledge);
 
   const summary = Organizer.apply_(results, cfg);
   if (cfg.DEBUG) {

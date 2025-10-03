@@ -8,6 +8,8 @@ The Knowledge System:
 
 - **Augments AI prompts** with content from Google Drive documents
 - **Separates instructions from context** (INSTRUCTIONS vs KNOWLEDGE)
+- **Supports global knowledge** shared across ALL AI operations (ADR-019)
+- **Supports feature-specific knowledge** for individual AI tasks
 - **Supports single documents** (rules, methodology) and **document folders** (examples, reference material)
 - **Caches documents** intelligently to reduce Drive API quota usage
 - **Provides token transparency** showing how much AI capacity is being used
@@ -27,6 +29,45 @@ The Knowledge System:
 - You don't have specific classification rules
 
 ## Core Concepts
+
+### Global vs. Feature-Specific Knowledge (ADR-019)
+
+The system uses a **two-tier knowledge architecture** to eliminate duplication and ensure consistency:
+
+**Global Knowledge (Organization-Wide Context)**
+- **Configuration**: `GLOBAL_KNOWLEDGE_FOLDER_URL` + `GLOBAL_KNOWLEDGE_MAX_DOCS`
+- **Applies to**: ALL AI operations (email categorization, reply drafting, summarization, future features)
+- **Contains**: Team structure, projects, terminology, domain knowledge, business processes
+- **Purpose**: Single source of truth for organizational context
+- **Injection order**: FIRST (before feature-specific knowledge)
+- **Benefits**: No duplication, consistent AI behavior, reduced token consumption
+
+**Feature-Specific Knowledge (Task Instructions)**
+- **Configuration**: Per-feature properties (e.g., `LABEL_KNOWLEDGE_FOLDER_URL`, `REPLY_DRAFTER_INSTRUCTIONS_URL`)
+- **Applies to**: Individual AI features only
+- **Contains**: How to perform specific tasks (classification rules, drafting style, summary format)
+- **Purpose**: Customize behavior for specific AI operations
+- **Injection order**: SECOND (after global knowledge)
+- **Benefits**: Task-specific customization without affecting other features
+
+**Example Use Case:**
+```
+GLOBAL_KNOWLEDGE_FOLDER_URL contains:
+- team-structure.gdoc: Engineering consists of Core Platform, Data Services, ML Research
+- project-phoenix.gdoc: Q1 priority initiative - email AI platform
+- terminology.gdoc: RFR = Ready for Review, P0 = critical priority
+
+LABEL_KNOWLEDGE_FOLDER_URL contains:
+- classification-examples.txt: Email labeling examples
+- edge-cases.txt: Ambiguous scenarios
+
+REPLY_DRAFTER_INSTRUCTIONS_URL contains:
+- Drafting tone: Professional but warm
+- Signature style: Use "Best regards"
+
+Result: ALL AI operations (labeling, reply drafting, summarization) understand
+your organization's teams, projects, and terminology without duplication.
+```
 
 ### INSTRUCTIONS vs KNOWLEDGE
 
@@ -73,6 +114,15 @@ Folder containing:
 
 ## Configuration
 
+### Global Knowledge (Recommended First - ADR-019)
+
+Configure organization-wide context that applies to ALL AI operations:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `GLOBAL_KNOWLEDGE_FOLDER_URL` | Folder URL | Organization-wide context folder (teams, projects, terminology) |
+| `GLOBAL_KNOWLEDGE_MAX_DOCS` | Number | Maximum documents to fetch from global folder (default: 5) |
+
 ### Email Labeling Knowledge
 
 Configure these properties in Script Properties:
@@ -93,7 +143,25 @@ Configure these properties in Script Properties:
 
 ### Configuration Examples
 
-**Single instructions document only**:
+**Global knowledge only** (recommended starting point):
+```
+GLOBAL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/global123
+GLOBAL_KNOWLEDGE_MAX_DOCS = 10
+```
+
+**Global + feature-specific knowledge** (recommended for production):
+```
+# Global knowledge (applies to ALL AI operations)
+GLOBAL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/global123
+GLOBAL_KNOWLEDGE_MAX_DOCS = 10
+
+# Email labeling knowledge
+LABEL_INSTRUCTIONS_DOC_URL = https://docs.google.com/document/d/abc123/edit
+LABEL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/xyz789
+LABEL_KNOWLEDGE_MAX_DOCS = 5
+```
+
+**Single instructions document only** (legacy pattern):
 ```
 LABEL_INSTRUCTIONS_DOC_URL = https://docs.google.com/document/d/abc123/edit
 ```
@@ -104,13 +172,6 @@ LABEL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/xyz789
 LABEL_KNOWLEDGE_MAX_DOCS = 10
 ```
 
-**Both instructions and knowledge** (recommended):
-```
-LABEL_INSTRUCTIONS_DOC_URL = https://docs.google.com/document/d/abc123/edit
-LABEL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/xyz789
-LABEL_KNOWLEDGE_MAX_DOCS = 5
-```
-
 **Debug mode**:
 ```
 KNOWLEDGE_DEBUG = true
@@ -119,7 +180,65 @@ KNOWLEDGE_LOG_SIZE_WARNINGS = true
 
 ## Setup Guide
 
-### Step 1: Create Knowledge Documents
+### Step 0: Create Global Knowledge Folder (Recommended First - ADR-019)
+
+**What to include in global knowledge:**
+- Organizational structure (teams, departments, reporting hierarchy)
+- Project context (active projects, priorities, timelines)
+- Terminology (company-specific acronyms, domain jargon)
+- Domain knowledge (business context, industry background)
+- Business processes (approval workflows, escalation procedures)
+
+**Setup steps:**
+
+1. **Create a Google Drive folder** named "Organization Context" or similar
+2. **Add multiple documents** covering different organizational topics
+3. **Share the folder** with yourself (ensure Apps Script has access)
+4. **Get the folder URL** from the browser address bar
+5. **Add to configuration**:
+   ```
+   GLOBAL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/YOUR_FOLDER_ID
+   GLOBAL_KNOWLEDGE_MAX_DOCS = 10
+   ```
+
+**Example Global Knowledge Folder:**
+```
+Organization Context/
+├── team-structure.gdoc       (Engineering: Core Platform, Data Services, ML Research)
+├── project-phoenix.gdoc       (Q1 priority initiative - email AI platform)
+├── project-atlas.gdoc         (Legacy maintenance project)
+├── terminology.gdoc           (RFR = Ready for Review, P0 = critical, etc.)
+├── domain-knowledge.gdoc      (Company builds email management tools for enterprises)
+└── business-processes.gdoc    (Approval workflows, escalation paths)
+```
+
+**Example Team Structure Document:**
+```
+Engineering Team Structure
+
+TEAMS:
+- Core Platform: Infrastructure, API, database systems
+- Data Services: ETL, analytics, data pipelines
+- ML Research: AI/ML experimentation, model development
+
+REPORTING:
+- Core Platform reports to VP Engineering
+- Data Services reports to VP Engineering
+- ML Research reports to CTO
+
+KEY CONTACTS:
+- Core Platform Lead: Sarah Chen
+- Data Services Lead: Michael Rodriguez
+- ML Research Lead: Dr. Lisa Park
+```
+
+**Benefits:**
+- ALL AI operations (categorization, reply drafting, summarization) understand your organization
+- No need to duplicate this context in feature-specific knowledge
+- Update once, applies everywhere
+- Future AI features automatically inherit this knowledge
+
+### Step 1: Create Feature-Specific Knowledge Documents
 
 #### Option A: Single Instructions Document
 
@@ -514,6 +633,7 @@ The same Knowledge System architecture will power all future AI features.
 
 - [ADR-007: Google Drive Rules Integration](../../docs/adr/007-drive-rules-integration.md)
 - [ADR-015: INSTRUCTIONS vs KNOWLEDGE Naming Convention](../../docs/adr/015-instructions-knowledge-naming.md)
+- [ADR-019: Global Knowledge Folder Architecture](../../docs/adr/019-global-knowledge-folder.md)
 
 ## See Also
 

@@ -185,6 +185,10 @@ The KnowledgeService provides unified knowledge management for AI prompts by fet
 - `KNOWLEDGE_DEBUG`: Enable detailed logging for document fetching (default: false)
 - `KNOWLEDGE_LOG_SIZE_WARNINGS`: Enable soft warnings at 50% and 90% of model token capacity (default: true)
 
+**Global Knowledge** (applies to ALL AI operations - ADR-019):
+- `GLOBAL_KNOWLEDGE_FOLDER_URL`: Organization-wide context folder shared across all AI features (Google Drive folder URL or ID, optional)
+- `GLOBAL_KNOWLEDGE_MAX_DOCS`: Maximum documents to fetch from global knowledge folder (default: 5)
+
 **Email Labeling Knowledge:**
 - `LABEL_KNOWLEDGE_DOC_URL`: Single document with core labeling rules (Google Docs URL or ID)
 - `LABEL_KNOWLEDGE_FOLDER_URL`: Folder with additional context documents (Google Drive folder URL or ID)
@@ -291,6 +295,13 @@ The KnowledgeService provides centralized knowledge management for AI-powered fe
 - Metadata shows model capacity and current usage
 - Debug logging shows token counts and content previews
 
+**Global Knowledge Architecture (ADR-019):**
+- Organization-wide context shared across ALL AI operations
+- Fetched once per execution, passed to all prompt builders
+- Injected BEFORE feature-specific knowledge in prompts
+- Eliminates duplication of organizational context
+- Optional configuration (fully backward compatible)
+
 #### Core Functions
 
 **Single Document Fetching:**
@@ -340,6 +351,12 @@ const knowledge = fetchFolder_(folderIdOrUrl, {
 
 **High-Level Knowledge Fetchers:**
 ```javascript
+// Global knowledge (applies to ALL AI operations - ADR-019)
+const globalKnowledge = fetchGlobalKnowledge_({
+  folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
+  maxDocs: parseInt(cfg.GLOBAL_KNOWLEDGE_MAX_DOCS || '5')
+});
+
 // Email labeling knowledge (combines doc + folder)
 const labelKnowledge = fetchLabelingKnowledge_({
   docUrl: cfg.LABEL_KNOWLEDGE_DOC_URL,
@@ -356,6 +373,31 @@ const replyKnowledge = fetchReplyKnowledge_({
 ```
 
 #### Usage Examples
+
+**Example 0: Global Knowledge Configuration (ADR-019)**
+```javascript
+// In Apps Script Properties:
+// GLOBAL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/global123
+// GLOBAL_KNOWLEDGE_MAX_DOCS = 10
+
+const cfg = getConfig_();
+const globalKnowledge = fetchGlobalKnowledge_({
+  folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
+  maxDocs: parseInt(cfg.GLOBAL_KNOWLEDGE_MAX_DOCS || '5')
+});
+
+if (globalKnowledge.configured) {
+  // Global knowledge automatically injected into ALL AI prompts
+  // Contains: team structure, projects, terminology, domain knowledge
+  console.log(`Loaded ${globalKnowledge.metadata.docCount} global documents`);
+  console.log(`Total: ${globalKnowledge.metadata.estimatedTokens} tokens`);
+
+  // Pass to ALL prompt builders (categorization, summarization, reply drafting)
+  const prompt = buildReplyDraftPrompt_(emailThread, replyKnowledge, globalKnowledge);
+}
+
+// Not configured: all AI operations proceed without global knowledge
+```
 
 **Example 1: Single Document Configuration**
 ```javascript
@@ -545,6 +587,7 @@ Refer to `docs/adr/` for complete context:
 - **ADR-007**: Google Drive document integration for classification rules
 - **ADR-011**: Self-contained agent architecture for independent modules
 - **ADR-012**: Generic service layer pattern for reusable agent operations
+- **ADR-019**: Global knowledge folder for organization-wide context shared across all AI features
 
 ## Testing and Debugging
 
