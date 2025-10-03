@@ -25,12 +25,6 @@ function getConfig_() {
     // Web App Configuration
     WEBAPP_ENABLED: (p.getProperty('WEBAPP_ENABLED') || 'true').toLowerCase() === 'true',
     WEBAPP_MAX_EMAILS_PER_SUMMARY: parseInt(p.getProperty('WEBAPP_MAX_EMAILS_PER_SUMMARY') || '50', 10),
-    // Reply Drafter Agent Configuration (ADR-015: INSTRUCTIONS vs KNOWLEDGE naming)
-    REPLY_DRAFTER_ENABLED: p.getProperty('REPLY_DRAFTER_ENABLED') !== 'false', // Default: true
-    REPLY_DRAFTER_INSTRUCTIONS_URL: p.getProperty('REPLY_DRAFTER_INSTRUCTIONS_URL'),
-    REPLY_DRAFTER_CONTEXT_FOLDER_URL: p.getProperty('REPLY_DRAFTER_CONTEXT_FOLDER_URL'),
-    REPLY_DRAFTER_CONTEXT_MAX_DOCS: parseInt(p.getProperty('REPLY_DRAFTER_CONTEXT_MAX_DOCS') || '5', 10),
-    REPLY_DRAFTER_DEBUG: p.getProperty('REPLY_DRAFTER_DEBUG') === 'true',
     // KnowledgeService Configuration
     // Email Labeling Knowledge (INSTRUCTIONS = how to label, KNOWLEDGE = contextual reference)
     LABEL_INSTRUCTIONS_DOC_URL: p.getProperty('LABEL_INSTRUCTIONS_DOC_URL'),

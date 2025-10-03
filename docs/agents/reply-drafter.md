@@ -105,8 +105,8 @@ Add these properties to Script Properties in the Apps Script editor:
 | Property | Default | Description |
 |----------|---------|-------------|
 | `REPLY_DRAFTER_INSTRUCTIONS_URL` | None | Google Docs URL with drafting style/methodology |
-| `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL` | None | Google Drive folder URL with contextual examples |
-| `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | `5` | Maximum documents to fetch from knowledge folder |
+| `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL` | None | Google Drive folder URL with knowledge documents (ADR-015) |
+| `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | `5` | Maximum documents to fetch from knowledge folder (ADR-015) |
 
 ### Configuration Examples
 
@@ -155,8 +155,8 @@ Both are optional. Without knowledge configuration, the Reply Drafter uses defau
 | Property | Type | Description |
 |----------|------|-------------|
 | `REPLY_DRAFTER_INSTRUCTIONS_URL` | Document URL or ID | Guidelines document (tone, style, methodology) |
-| `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL` | Folder URL or ID | Folder with example replies and reference material |
-| `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | Number (default: 5) | Maximum documents to fetch from knowledge folder |
+| `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL` | Folder URL or ID | Folder with knowledge documents and reference material (ADR-015) |
+| `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | Number (default: 5) | Maximum documents to fetch from knowledge folder (ADR-015) |
 
 ### Setup Guide
 
@@ -364,9 +364,11 @@ The knowledge system uses **fail-fast** error handling:
 ```
 Failed to fetch knowledge document (ID: ABC123XYZ).
 Document may not exist or you may lack permission.
-Configuration property: REPLY_DRAFTER_INSTRUCTIONS_URL
+Configuration property: REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL
 To proceed without knowledge, remove this property.
 ```
+
+**Note on configuration**: Reply Drafter manages its own configuration via `getReplyDrafterConfig_()` in `AgentReplyDrafter.gs` (ADR-014), not through core `Config.gs`. This follows the self-contained agent architecture pattern.
 
 ### Best Practices for Knowledge Documents
 
@@ -387,7 +389,7 @@ To proceed without knowledge, remove this property.
 
 **Token Management:**
 - Monitor debug logs for utilization percentage
-- If warnings appear, reduce `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS`
+- If warnings appear, reduce `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` (ADR-015)
 - Remove verbose examples or split into focused documents
 - Disable warnings with `KNOWLEDGE_LOG_SIZE_WARNINGS=false` (not recommended)
 
@@ -400,7 +402,7 @@ To proceed without knowledge, remove this property.
 - Test with simple draft to verify knowledge loading
 
 **Token warnings appearing:**
-- Reduce number of documents: lower `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS`
+- Reduce number of documents: lower `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` (ADR-015)
 - Simplify instructions document (remove verbose examples)
 - Split large knowledge documents into smaller focused ones
 
@@ -563,8 +565,8 @@ The Reply Drafter follows [ADR-010: PromptBuilder and LLMService Separation](../
 // Knowledge fetched via KnowledgeService
 const knowledge = fetchReplyKnowledge_({
   instructionsUrl: config.REPLY_DRAFTER_INSTRUCTIONS_URL,
-  knowledgeFolderUrl: config.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL,
-  maxDocs: config.REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS
+  knowledgeFolderUrl: config.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL,  // ADR-015
+  maxDocs: config.REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS  // ADR-015
 });
 
 // Prompt built with conditional knowledge injection

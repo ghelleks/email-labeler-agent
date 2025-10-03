@@ -149,10 +149,12 @@ Configuration uses Apps Script Script Properties accessible via the Apps Script 
 - `WEBAPP_MAX_EMAILS_PER_SUMMARY`: Maximum emails to process in web app per summary (default: 25)
 
 #### Reply Drafter Agent Configuration
+**Note**: Reply Drafter configuration is managed in `AgentReplyDrafter.gs` via `getReplyDrafterConfig_()` function (ADR-014), not in core `Config.gs`. The agent follows the self-contained architecture pattern.
+
 - `REPLY_DRAFTER_ENABLED`: Enable/disable Reply Drafter agent (default: true)
 - `REPLY_DRAFTER_INSTRUCTIONS_URL`: Google Docs URL with drafting style/methodology (optional)
-- `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL`: Google Drive folder URL with contextual examples (optional)
-- `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS`: Maximum documents to fetch from knowledge folder (default: 5)
+- `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL`: Google Drive folder URL with contextual examples (optional, ADR-015)
+- `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS`: Maximum documents to fetch from knowledge folder (default: 5, ADR-015)
 - `REPLY_DRAFTER_DEBUG`: Enable detailed logging for the agent (default: false)
 - `REPLY_DRAFTER_DRY_RUN`: Test mode for the agent (default: false)
 
@@ -178,10 +180,10 @@ The KnowledgeService provides unified knowledge management for AI prompts by fet
 - `LABEL_KNOWLEDGE_FOLDER_URL`: Folder with additional context documents (Google Drive folder URL or ID)
 - `LABEL_KNOWLEDGE_MAX_DOCS`: Maximum documents to fetch from folder (default: 5)
 
-**Reply Drafting Knowledge**:
+**Reply Drafting Knowledge** (managed by AgentReplyDrafter.gs):
 - `REPLY_DRAFTER_INSTRUCTIONS_URL`: Document with drafting style/guidelines (Google Docs URL or ID)
-- `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL`: Folder with context documents (Google Drive folder URL or ID)
-- `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS`: Maximum documents from folder (default: 5)
+- `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL`: Folder with knowledge documents (Google Drive folder URL or ID, ADR-015)
+- `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS`: Maximum documents from folder (default: 5, ADR-015)
 
 **Legacy Configuration** (deprecated):
 - `RULE_DOC_URL`: Old email labeling rules document (use `LABEL_KNOWLEDGE_DOC_URL` instead)
@@ -324,11 +326,11 @@ const labelKnowledge = fetchLabelingKnowledge_({
   maxDocs: parseInt(cfg.LABEL_KNOWLEDGE_MAX_DOCS || '5')
 });
 
-// Reply drafting knowledge
+// Reply drafting knowledge (used by AgentReplyDrafter.gs)
 const replyKnowledge = fetchReplyKnowledge_({
   instructionsUrl: cfg.REPLY_DRAFTER_INSTRUCTIONS_URL,
-  knowledgeFolderUrl: cfg.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL,
-  maxDocs: parseInt(cfg.REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS || '5')
+  knowledgeFolderUrl: cfg.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL,  // ADR-015 naming
+  maxDocs: parseInt(cfg.REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS || '5')  // ADR-015 naming
 });
 ```
 
