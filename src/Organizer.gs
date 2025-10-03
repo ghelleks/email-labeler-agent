@@ -31,7 +31,7 @@ const Organizer = {
         if (status === 'labeled') labeled++;
         else if (status === 'skipped' || status.indexOf('would-label') === 0) skipped++;
 
-        // Agents hook (after label application)
+        // Agents hook (onLabel - per-email immediate action)
         if (typeof Agents !== 'undefined' && Agents && typeof Agents.runFor === 'function') {
           var ctx = {
             label: r.required_action,
@@ -56,6 +56,21 @@ const Organizer = {
         console.log('Error labeling thread ' + threadId + ': ' + e);
       }
     }
+
+    // Run postLabel handlers after all labeling complete
+    // This catches manually-labeled emails and enables inbox-wide scans
+    if (typeof Agents !== 'undefined' && Agents && typeof Agents.runPostLabelHandlers === 'function') {
+      try {
+        var postLabelStats = Agents.runPostLabelHandlers(cfg);
+        // Add postLabel stats to agent stats
+        agentOk += postLabelStats.executed;
+        agentSkip += postLabelStats.skipped;
+        agentError += postLabelStats.errors;
+      } catch (e) {
+        console.log('Error running postLabel handlers: ' + e);
+      }
+    }
+
     return { candidates: results.length, labeled: labeled, skipped: skipped, errors: errors, agents: { ok: agentOk, skip: agentSkip, retry: agentRetry, error: agentError } };
   }
 };

@@ -38,6 +38,7 @@ All ADRs in this project follow a consistent format defined in [template.md](tem
 - [ADR-015: INSTRUCTIONS vs KNOWLEDGE Configuration Naming Convention](015-instructions-knowledge-naming.md)
 - [ADR-016: Label-Synchronized Agent State Management](016-label-synchronized-agent-state.md) (Superseded by ADR-017)
 - [ADR-017: Remove UserProperties-Based Agent Idempotency](017-remove-userproperties-idempotency.md)
+- [ADR-018: Dual-Hook Agent Architecture](018-dual-hook-agent-architecture.md) ⚠️ Breaking Change
 
 ## Status Legend
 

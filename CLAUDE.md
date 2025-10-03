@@ -96,11 +96,12 @@ clasp --user work login        # Log into work account
 
 1. Use `npm run open:personal` or `npm run open:work` to open Apps Script editor
 2. Select trigger installation function from the dropdown:
-   - `installTrigger` - Core email labeling trigger (hourly)
-   - `installSummarizerTrigger` - Email Summarizer trigger (daily)
-   - `installReplyDrafterTrigger` - Reply Drafter trigger (every 30 minutes)
+   - `installTrigger` - Core email labeling trigger (hourly) - **Required**
+   - `installSummarizerTrigger` - Email Summarizer trigger (daily) - Optional, only if using Email Summarizer
 3. Click the Run button to install triggers
 4. Grant necessary permissions when prompted
+
+**Note**: The Reply Drafter no longer requires a separate trigger. It runs automatically as part of the hourly email processing via the dual-hook architecture (onLabel + postLabel).
 
 The `deploy:[account]` commands attempt automated trigger installation but may fail on the `clasp run` portion.
 
@@ -154,11 +155,11 @@ Configuration uses Apps Script Script Properties accessible via the Apps Script 
 #### Reply Drafter Agent Configuration
 **Note**: Reply Drafter configuration is managed in `AgentReplyDrafter.gs` via `getReplyDrafterConfig_()` function (ADR-014), not in core `Config.gs`. The agent follows the self-contained architecture pattern.
 
-The Reply Drafter operates in two modes:
-1. **Agent Handler**: Runs during email classification (immediate draft creation)
-2. **Scheduled Batch**: Runs every 30 minutes to process existing `reply_needed` emails
+The Reply Drafter uses the **dual-hook pattern** to ensure comprehensive draft coverage:
+1. **onLabel Hook**: Runs during email classification (immediate draft creation for newly-classified emails)
+2. **postLabel Hook**: Runs after labeling complete (catches manually-labeled `reply_needed` emails)
 
-This dual-mode architecture ensures drafts are created for both newly-classified emails and manually-labeled emails.
+This dual-hook architecture ensures drafts are created for both newly-classified emails and manually-labeled emails, all within the hourly email processing cycle. **No separate trigger required.**
 
 - `REPLY_DRAFTER_ENABLED`: Enable/disable Reply Drafter agent (default: true)
 - `REPLY_DRAFTER_INSTRUCTIONS_URL`: Google Docs URL with drafting style/methodology (optional)
@@ -201,18 +202,22 @@ The KnowledgeService provides unified knowledge management for AI prompts by fet
 ## Development Patterns
 
 ### Adding New Agent Modules
-The system supports two agent architecture patterns:
+The system uses a **dual-hook agent architecture** where agents can implement two types of hooks:
 
-#### Self-Contained Agents (Recommended - ADR-011)
-For complex agents that need independent lifecycle management:
-1. Create agent file (e.g., `AgentMyFeature.gs`) with complete self-management
+#### Dual-Hook Pattern (REQUIRED - Breaking Change)
+**All agents must now register using the dual-hook pattern:**
+
+1. Create agent file (e.g., `AgentMyFeature.gs`) with self-contained architecture
 2. Implement configuration management with agent-specific property keys
 3. Handle label creation and management within the agent (if needed)
-4. Manage own trigger lifecycle for scheduled execution (if needed)
+4. Implement hook functions:
+   - **onLabel**: Immediate per-email actions during classification (optional)
+   - **postLabel**: Inbox-wide scan after all labeling complete (optional)
+   - At least one hook MUST be provided
 5. Use generic service functions from `GmailService.gs` for common operations
 6. **Self-register with `AGENT_MODULES.push()` pattern** - no core system changes needed
 
-**Self-Registration Pattern**:
+**Dual-Hook Registration Pattern**:
 ```javascript
 // At the end of your agent file (e.g., AgentReplyDrafter.gs)
 if (typeof AGENT_MODULES === 'undefined') {
@@ -223,10 +228,12 @@ AGENT_MODULES.push(function(api) {
   api.register(
     'label_name',           // Label to trigger on
     'AgentName',            // Agent name for logging
-    handlerFunction_,       // Handler function
     {
-      idempotentKey: function(ctx) { return 'agentName:' + ctx.threadId; },
-      runWhen: 'afterLabel', // Run after labeling
+      onLabel: onLabelHandler_,     // Immediate per-email action (optional)
+      postLabel: postLabelHandler_  // Inbox-wide scan (optional)
+    },
+    {
+      runWhen: 'afterLabel', // Run after labeling (respects dry-run)
       timeoutMs: 30000,      // Soft timeout guidance
       enabled: true          // Enabled by default
     }
@@ -234,15 +241,20 @@ AGENT_MODULES.push(function(api) {
 });
 ```
 
-**Examples of Self-Contained Agents**:
-- **AgentReplyDrafter.gs**: Generates draft replies for `reply_needed` emails (dual-mode: agent handler + 30-minute scheduled batch)
-- **AgentSummarizer.gs**: Daily email summaries for `summarize` label (dual-mode: agent handler + daily scheduled batch)
+**Hook Selection Guide**:
+- **onLabel only**: Immediate actions on newly-classified emails (e.g., forward, notify)
+- **postLabel only**: Periodic inbox scanning without immediate response (e.g., cleanup)
+- **Both hooks**: Immediate action + catch manually-labeled emails (e.g., Reply Drafter)
 
-#### Traditional Agents (Simple Cases)
-For simple post-processing agents:
-1. Create agent in `AgentTemplate.gs` or separate file
-2. Register via `registerAgents()` function or `Agents.registerAllModules()`
-3. Agents receive email data and can modify classification results
+**Hook Execution Timing**:
+- **onLabel**: Runs during `Organizer.apply_()` for each email being labeled
+- **postLabel**: Runs via `Agents.runPostLabelHandlers()` after all labeling complete
+
+**Examples of Dual-Hook Agents**:
+- **AgentReplyDrafter.gs**: onLabel (immediate draft) + postLabel (catch manual labels)
+- **AgentSummarizer.gs**: onLabel (archive on label) + postLabel (null - uses scheduled trigger instead)
+
+**IMPORTANT**: The old single-function registration pattern is NO LONGER SUPPORTED. All agents must migrate to dual-hook pattern.
 
 #### Generic Service Layer (ADR-012)
 Use these functions for common operations:
@@ -573,19 +585,19 @@ Refer to `docs/adr/` for complete context:
 
 **🔍 Problem**: Trigger installation fails
 - **Solution**: Install triggers manually in Apps Script editor
-  - Core labeling: `installTrigger` function
-  - Email Summarizer: `installSummarizerTrigger` function
-  - Reply Drafter: `installReplyDrafterTrigger` function
+  - Core labeling: `installTrigger` function (required)
+  - Email Summarizer: `installSummarizerTrigger` function (optional)
 - **Solution**: Automated `clasp run` trigger installation is unreliable due to permissions
+- **Note**: Reply Drafter no longer needs separate trigger (uses dual-hook pattern)
 
 **🔍 Problem**: Reply Drafter not creating drafts
 - **Solution**: Verify `REPLY_DRAFTER_ENABLED=true` in Script Properties
 - **Solution**: Check that emails have `reply_needed` label applied by core classification
-- **Solution**: Install scheduled batch trigger: `installReplyDrafterTrigger` function in Apps Script editor
+- **Solution**: Verify core email labeling trigger (`installTrigger`) is installed and running hourly
 - **Solution**: Enable `REPLY_DRAFTER_DEBUG=true` for detailed logging
 - **Solution**: Test with `REPLY_DRAFTER_DRY_RUN=true` to verify agent runs without draft creation
-- **Solution**: Check execution logs for idempotency messages (draft may already exist)
-- **Solution**: For manually labeled emails, wait for next 30-minute scheduled run or run `runReplyDrafter` manually
+- **Solution**: Check execution logs for both onLabel and postLabel handler execution
+- **Solution**: For manually labeled emails, postLabel hook will process them on next hourly run
 
 **🔍 Problem**: Email Summarizer not working
 - **Solution**: Verify `SUMMARIZER_ENABLED=true` in Script Properties

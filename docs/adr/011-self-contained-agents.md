@@ -125,6 +125,9 @@ function agentHandler(ctx) {
 ## Implementation Notes
 
 ### Agent Structure Template
+
+**Note**: As of ADR-018, agents use dual-hook pattern instead of separate triggers.
+
 ```javascript
 // 1. Configuration Management
 function getAgentConfig_() { /* self-managed config */ }
@@ -132,17 +135,22 @@ function getAgentConfig_() { /* self-managed config */ }
 // 2. Infrastructure Setup
 function ensureAgentInfrastructure_() { /* labels, etc. */ }
 
-// 3. Agent Logic
-function agentHandler(ctx) { /* main processing */ }
+// 3. Agent Logic - Dual Hooks (ADR-018)
+function agentOnLabel_(ctx) { /* immediate per-email action */ }
+function agentPostLabel_() { /* inbox-wide scanning */ }
 
-// 4. Lifecycle Management
-function installAgentTrigger() { /* scheduling */ }
-function runAgent() { /* entry point */ }
-
-// 5. Registration
+// 4. Registration with Dual-Hook Pattern
 AGENT_MODULES.push(function(api) {
-  api.register('label', 'agentName', agentHandler, options);
+  api.register('label', 'agentName', {
+    onLabel: agentOnLabel_,    // Optional: immediate action
+    postLabel: agentPostLabel_  // Optional: periodic scan
+  }, options);
 });
+
+// Legacy: Separate triggers only needed for non-standard schedules
+// Most agents no longer need this - dual hooks run in hourly trigger
+function installAgentTrigger() { /* optional: special scheduling */ }
+function runAgent() { /* optional: separate entry point */ }
 ```
 
 ### Configuration Naming Conventions
@@ -156,7 +164,10 @@ AGENT_MODULES.push(function(api) {
 - Document label lifecycle and cleanup responsibilities
 
 ### Trigger Management Patterns
-- Agents should clean up existing triggers before creating new ones
+- **Note**: As of ADR-018, most agents no longer need separate triggers
+- Dual-hook pattern provides both immediate action and periodic scanning
+- Legacy pattern still available for agents with non-standard scheduling needs
+- If separate triggers needed: clean up existing triggers before creating new ones
 - Use distinctive trigger names that identify the agent
 - Implement both installation and cleanup functions
 
@@ -168,6 +179,7 @@ AGENT_MODULES.push(function(api) {
 ## References
 
 - ADR-004: Pluggable Agents Architecture (base framework)
+- ADR-018: Dual-Hook Agent Architecture (current execution model)
 - ADR-012: Generic Service Layer Pattern (supporting infrastructure)
 - Google Apps Script PropertiesService documentation
 - Open/Closed Principle and modular architecture patterns

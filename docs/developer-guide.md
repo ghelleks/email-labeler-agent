@@ -193,20 +193,19 @@ The Email Summarizer trigger is separate from the main email processing trigger 
 ## Writing Agents
 Agents let you plug in post-label actions (e.g., create a draft for `reply_needed`, forward `todo` items elsewhere) without changing core triage code.
 
-The system supports two agent architecture patterns:
-1. **Self-Contained Agents** (recommended): Complete independent modules managing their own lifecycle
-2. **Traditional Agents**: Simple handlers registered through the agent framework
+**IMPORTANT**: As of ADR-018, all agents must use the **dual-hook pattern** with `{ onLabel, postLabel }` registration. The old single-function registration is no longer supported.
 
-### Self-Contained Agent Architecture (Recommended)
+### Self-Contained Agent Architecture with Dual Hooks
 
-Self-contained agents manage their complete lifecycle independently, following ADR-011 patterns:
+Self-contained agents manage their complete lifecycle independently, following ADR-011 and ADR-018 patterns:
 
 #### Key Characteristics:
 - **Configuration Management**: Agents define and handle their own configuration keys
 - **Label Management**: Agents create and manage their own labels
-- **Trigger Lifecycle**: Agents manage their own scheduled execution
+- **Dual-Hook Pattern**: Agents implement onLabel (immediate) and/or postLabel (inbox scan) hooks
 - **State Management**: Agents handle their own persistence and idempotency
 - **Infrastructure Setup**: Agents ensure their required infrastructure exists
+- **No Separate Triggers**: Most agents run via dual hooks in hourly trigger (ADR-018)
 
 #### Agent Structure Template:
 ```javascript
@@ -227,29 +226,55 @@ function ensureAgentLabels_() {
   return GmailApp.getUserLabelByName(labelName) || GmailApp.createLabel(labelName);
 }
 
-// 3. Main Agent Logic
-function agentHandler(ctx) {
+// 3. Dual-Hook Handlers (ADR-018)
+
+// onLabel: Immediate per-email action (optional)
+function agentOnLabel_(ctx) {
   try {
     const config = getAgentConfig_();
     if (!config.AGENT_ENABLED) {
       return { status: 'skip', info: 'agent disabled' };
     }
 
-    // Agent processing logic here
-    return { status: 'ok', info: 'processed successfully' };
+    // Immediate action when email is labeled
+    // Example: archive, forward, create draft, etc.
+    return { status: 'ok', info: 'immediate action completed' };
   } catch (error) {
     return { status: 'error', info: error.toString() };
   }
 }
 
-// 4. Scheduled Execution (Self-Contained)
+// postLabel: Inbox-wide scan after labeling (optional)
+function agentPostLabel_() {
+  try {
+    const config = getAgentConfig_();
+    if (!config.AGENT_ENABLED) return;
+
+    // Search inbox for all emails with target label
+    const query = 'in:inbox label:target_label';
+    const threads = GmailApp.search(query);
+
+    // Process each thread
+    threads.forEach(function(thread) {
+      // Check idempotency before processing
+      // Perform batch operations
+    });
+
+    Logger.log(`agentPostLabel: Processed ${threads.length} threads`);
+  } catch (error) {
+    Logger.log('agentPostLabel error: ' + error.toString());
+  }
+}
+
+// 4. Scheduled Execution (Optional - for non-standard schedules only)
+// NOTE: Most agents no longer need this - dual hooks run in hourly trigger
 function runAgentScheduled() {
-  // Independent scheduled execution logic
+  // Only implement if you need separate schedule (e.g., daily instead of hourly)
   const config = getAgentConfig_();
   // Process emails, send notifications, etc.
 }
 
-// 5. Trigger Management (Self-Contained)
+// 5. Trigger Management (Optional - only if separate schedule needed)
 function installAgentTrigger() {
   deleteAgentTriggers_();
   ScriptApp.newTrigger('runAgentScheduled')
@@ -265,7 +290,7 @@ function deleteAgentTriggers_() {
     .forEach(trigger => ScriptApp.deleteTrigger(trigger));
 }
 
-// 6. Registration with Framework
+// 6. Registration with Dual-Hook Pattern (REQUIRED)
 if (typeof AGENT_MODULES === 'undefined') {
   AGENT_MODULES = [];
 }
@@ -274,12 +299,15 @@ AGENT_MODULES.push(function(api) {
   api.register(
     'target_label',    // Label to trigger on
     'agentName',       // Unique agent name
-    agentHandler,      // Handler function
     {
-      idempotentKey: function(ctx) { return 'agentName:' + ctx.threadId; },
-      runWhen: 'afterLabel',
-      timeoutMs: 30000,
-      enabled: true
+      onLabel: agentOnLabel_,     // Immediate per-email action (optional)
+      postLabel: agentPostLabel_  // Inbox-wide scan (optional)
+      // At least one hook must be provided
+    },
+    {
+      runWhen: 'afterLabel',  // Run after labeling
+      timeoutMs: 30000,       // Soft timeout guidance
+      enabled: true           // Enabled by default
     }
   );
 });
@@ -303,78 +331,69 @@ const archived = archiveEmailsByIds_(emailIds);
 const sent = sendFormattedEmail_(destination, subject, htmlContent, sourceEmails);
 ```
 
-### Traditional Agent Pattern (Legacy)
+### Hook Selection Guide
 
-#### Where to put traditional agents
-- Create a new file (e.g., `MyAgents.gs`) in `src/`.
-- Define a global `registerAgents()` function. It is called at the start of `run()` if present.
+**When to implement onLabel:**
+- Need immediate action when email is classified (forward, notify, create draft)
+- Action should happen before user sees the labeled email
+- Fast, per-email operations
 
-### Registering a traditional agent
-```javascript
-// In MyAgents.gs
-function registerAgents() {
-  Agents.register(
-    'todo',            // label to respond to
-    'forwarder',       // unique agent name
-    function(ctx) {    // handler
-      if (ctx.dryRun) return { status: 'skip', info: 'dry-run' };
-      // do work here (e.g., UrlFetchApp.fetch(...))
-      return { status: 'ok', info: 'forwarded' };
-    },
-    {
-      // optional settings
-      idempotentKey: function(ctx) { return 'forwarder:' + ctx.threadId; },
-      runWhen: 'afterLabel', // or 'always' to ignore dry-run gating
-      timeoutMs: 20000
-    }
-  );
-}
-```
+**When to implement postLabel:**
+- Need to catch manually-labeled emails
+- Batch operations across all emails with label
+- Cleanup or reconciliation tasks
+- Retry failed operations
 
-### Choosing Between Agent Patterns
+**When to implement both:**
+- Need immediate action AND catch manual labels (recommended for action agents)
+- Example: Reply Drafter creates drafts immediately + catches manual labels
 
-**Use Self-Contained Agents when:**
-- Agent needs its own configuration options
-- Agent manages its own labels or Gmail state
-- Agent requires scheduled execution independent of email processing
-- Agent has complex initialization or cleanup requirements
-- Agent is a substantial feature (like Email Summarizer)
-
-**Use Traditional Agents when:**
-- Simple post-processing of labeled emails
-- No additional configuration needed
-- No independent scheduling required
-- Minimal state management
-- Quick integrations or notifications
+**When to use separate scheduled trigger:**
+- Need non-standard schedule (e.g., daily instead of hourly)
+- Operations independent of email labeling cycle
+- Example: Email Summarizer runs daily, not hourly
 
 ### Example: Email Summarizer Agent
 
-The Email Summarizer (`src/AgentSummarizer.gs`) demonstrates the self-contained pattern:
+The Email Summarizer (`src/AgentSummarizer.gs`) demonstrates the self-contained dual-hook pattern:
 
 - **Independent Configuration**: Uses `SUMMARIZER_*` properties including `SUMMARIZER_ARCHIVE_ON_LABEL`
 - **Label Management**: Creates and manages `summarized` label
-- **Immediate Action**: Archives emails immediately when `summarize` label is applied (configurable)
-- **Scheduled Execution**: Runs daily via `runEmailSummarizer()` function
+- **onLabel Hook**: Archives emails immediately when `summarize` label is applied (configurable)
+- **postLabel Hook**: Not implemented (set to null) - uses separate daily trigger instead
+- **Scheduled Execution**: Runs daily via `runEmailSummarizer()` function (separate trigger for batch processing)
 - **Trigger Management**: Self-manages triggers with `installSummarizerTrigger()`
 - **Generic Services**: Uses `findEmailsByLabelWithAge_()`, `manageLabelTransition_()`, etc.
-- **Framework Integration**: Registers with `AGENT_MODULES` pattern
+- **Dual-Hook Registration**: Registers with `AGENT_MODULES` pattern using `{ onLabel, postLabel: null }`
 
-### Handler contract
-The handler receives an `AgentContext` and returns an `AgentResult`.
+### Handler Contracts
 
-- Context (`ctx`):
-  - `label`: one of `reply_needed|review|todo|summarize`
-  - `decision`: `{ required_action, reason }` as decided by the model
-  - `threadId`: Gmail thread ID
-  - `thread`: `GmailThread` (already fetched)
-  - `cfg`: result of `getConfig_()` (includes `AGENTS_*` values)
-  - `dryRun`: boolean; mirrors `DRY_RUN`
-  - `log(msg)`: convenience logger that emits only when `DEBUG=true`
+#### onLabel Handler (Per-Email Actions)
+The onLabel handler receives an `AgentContext` and returns an `AgentResult`.
 
-- Return (`AgentResult`):
-  - `status`: `ok | skip | retry | error`
-  - `info?`: string for human-readable details
-  - `retryAfterMs?`: suggest a delay before retry (informational; scheduling is deferred to future enhancements)
+**Context (`ctx`):**
+- `label`: one of `reply_needed|review|todo|summarize`
+- `decision`: `{ required_action, reason }` as decided by the model
+- `threadId`: Gmail thread ID
+- `thread`: `GmailThread` (already fetched)
+- `cfg`: result of `getConfig_()` (includes `AGENTS_*` values)
+- `dryRun`: boolean; mirrors `DRY_RUN`
+- `log(msg)`: convenience logger that emits only when `DEBUG=true`
+
+**Return (`AgentResult`):**
+- `status`: `ok | skip | retry | error`
+- `info?`: string for human-readable details
+- `retryAfterMs?`: suggest a delay before retry (informational)
+
+#### postLabel Handler (Inbox-Wide Scan)
+The postLabel handler takes no parameters and returns nothing (void).
+
+**Implementation:**
+- Search inbox for emails with target label
+- Implement own idempotency checks
+- Process emails in batch
+- Log results using `Logger.log()` or console.log()
+- Handle errors internally (no return contract)
 
 ### Generic Service Functions
 
@@ -408,12 +427,35 @@ function sendFormattedEmail_(to, subject, htmlContent, sourceEmails)
 These functions handle error cases, provide consistent logging, and optimize Gmail API usage patterns.
 
 ### Idempotency
-- Default key: `${name}:${threadId}`; once an agent returns `ok`, it will not run again for that thread.
-- Override with `options.idempotentKey(ctx)` if you need finer control.
+
+**Important Change (ADR-017):** Framework-level idempotency tracking via UserProperties has been removed. Agents must implement their own application-level idempotency checks.
+
+**onLabel Hook:**
+- Check if work has already been done (e.g., draft exists, email forwarded)
+- Return `{ status: 'skip', info: 'already processed' }` if idempotent
+
+**postLabel Hook:**
+- Check each thread before processing (e.g., look for processed label, draft exists)
+- Skip already-processed threads to avoid duplicate work
+
+**Example Idempotency Patterns:**
+```javascript
+// Check if draft exists
+if (thread.getDrafts().length > 0) {
+  return { status: 'skip', info: 'draft already exists' };
+}
+
+// Check for processed label
+if (thread.getLabels().some(l => l.getName() === 'agent_processed')) {
+  return { status: 'skip', info: 'already processed' };
+}
+```
 
 ### Dry-run behavior
-- If `DRY_RUN=true`, agents are skipped by default with `status: 'skip'`.
-- To force execution in dry-run (for testing), set `runWhen: 'always'` in the agent options or set `AGENTS_DRY_RUN=false` in Script Properties to disable dry-run skipping for all agents.
+- If `DRY_RUN=true`, onLabel hooks are skipped by default with `status: 'skip'`
+- To force execution in dry-run (for testing), set `runWhen: 'always'` in the agent options
+- Or set `AGENTS_DRY_RUN=false` in Script Properties to disable dry-run skipping for all agents
+- postLabel hooks check agent-specific `AGENT_DRY_RUN` configuration
 
 ### Budgets and filters
 - `AGENTS_BUDGET_PER_RUN` (default `50`): maximum agent executions per `run()`.

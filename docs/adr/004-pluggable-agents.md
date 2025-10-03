@@ -97,19 +97,22 @@ class EmailAgent {
 }
 ```
 
-**Current Pattern (Self-Contained Agents):**
-See ADR-011: Self-Contained Agent Architecture for detailed guidance.
+**Current Pattern (Dual-Hook Self-Contained Agents):**
+See ADR-011: Self-Contained Agent Architecture and ADR-018: Dual-Hook Agent Architecture for detailed guidance.
 
 ```javascript
 // Self-contained agent structure
 function getAgentConfig_() { /* agent-managed configuration */ }
 function ensureAgentLabels_() { /* agent-managed labels */ }
-function agentHandler(ctx) { /* main processing logic */ }
-function installAgentTrigger() { /* agent-managed scheduling */ }
+function agentOnLabel_(ctx) { /* immediate per-email action */ }
+function agentPostLabel_() { /* inbox-wide scanning */ }
 
-// Registration following established pattern
+// Registration with dual-hook pattern (ADR-018)
 AGENT_MODULES.push(function(api) {
-  api.register('label', 'agentName', agentHandler, options);
+  api.register('label', 'agentName', {
+    onLabel: agentOnLabel_,    // Optional: immediate action
+    postLabel: agentPostLabel_  // Optional: periodic scan
+  }, options);
 });
 ```
 
@@ -159,14 +162,17 @@ AGENT_MODULES.push(function(api) {
 - Contribute reusable patterns back to service layer when appropriate
 
 #### Trigger Lifecycle
-- Agents manage their own scheduled execution triggers
+- **Note**: As of ADR-018, most agents no longer need separate triggers
+- Dual-hook pattern (`onLabel` + `postLabel`) runs in single hourly trigger
+- Legacy pattern: Agents can still manage separate triggers if needed for specific use cases
 - Clean up existing triggers before creating new ones
 - Implement both installation and cleanup functions
 - Use distinctive trigger names that identify the agent
 
 ## References
 
-- ADR-011: Self-Contained Agent Architecture (current implementation patterns)
+- ADR-011: Self-Contained Agent Architecture (independence and self-management patterns)
+- ADR-018: Dual-Hook Agent Architecture (current execution model - replaces separate triggers)
 - ADR-012: Generic Service Layer Pattern (supporting infrastructure)
 - PropertiesService documentation for state persistence
 - Apps Script execution time limits and quotas

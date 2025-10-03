@@ -454,17 +454,24 @@ if (typeof AGENT_MODULES === 'undefined') {
 AGENT_MODULES.push(function(api) {
   /**
    * Register Email Summarizer agent for "summarize" label
-   * Agent acknowledges emails and queues them for batch processing
+   * Agent acknowledges emails via onLabel (immediate archive if enabled)
+   * Separate daily trigger handles actual summarization (runEmailSummarizer)
+   *
+   * Uses dual-hook pattern:
+   * - onLabel: Immediate archive when label applied (if enabled)
+   * - postLabel: null (uses separate daily trigger instead)
    */
   api.register(
     'summarize',           // Label to trigger on
     'emailSummarizer',     // Agent name
-    summarizerAgentHandler, // Handler function
+    {
+      onLabel: summarizerAgentHandler,  // Immediate archive behavior
+      postLabel: null                    // Uses separate daily trigger
+    },
     {
       runWhen: 'afterLabel',  // Run after labeling (respects dry-run)
       timeoutMs: 30000,       // Soft timeout guidance
       enabled: true           // Enabled by default
-      // ADR-017: Removed idempotentKey - archiving is naturally idempotent
     }
   );
 });
