@@ -197,20 +197,30 @@ function processReplyNeeded_(ctx) {
     // Fetch knowledge via KnowledgeService
     let knowledge = null;
     try {
+      if (config.REPLY_DRAFTER_DEBUG) {
+        const hasInstructions = !!config.REPLY_DRAFTER_INSTRUCTIONS_URL;
+        const hasFolder = !!config.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL;
+        ctx.log('Knowledge configuration: instructions=' + hasInstructions + ', folder=' + hasFolder);
+      }
+
       knowledge = fetchReplyKnowledge_({
         instructionsUrl: config.REPLY_DRAFTER_INSTRUCTIONS_URL,
         knowledgeFolderUrl: config.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL,
         maxDocs: config.REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS
       });
 
-      if (knowledge.configured && config.REPLY_DRAFTER_DEBUG) {
-        ctx.log('Loaded reply knowledge: ' + knowledge.metadata.docCount + ' documents, ' +
-                knowledge.metadata.estimatedTokens + ' tokens (' +
-                knowledge.metadata.utilizationPercent + ' utilization)');
+      if (config.REPLY_DRAFTER_DEBUG) {
+        if (knowledge.configured) {
+          ctx.log('✓ Loaded reply knowledge: ' + knowledge.metadata.docCount + ' documents, ' +
+                  knowledge.metadata.estimatedTokens + ' tokens (' +
+                  knowledge.metadata.utilizationPercent + ' utilization)');
+        } else {
+          ctx.log('ℹ No knowledge configured - using basic drafting instructions');
+        }
       }
     } catch (knowledgeError) {
       // Knowledge fetch errors should propagate (fail-fast)
-      ctx.log('Knowledge fetch failed: ' + knowledgeError.toString());
+      ctx.log('✗ Knowledge fetch failed: ' + knowledgeError.toString());
       return { status: 'error', info: 'knowledge fetch failed: ' + knowledgeError.toString() };
     }
 
@@ -346,11 +356,28 @@ function runReplyDrafter() {
         }
 
         // Fetch knowledge if configured
+        if (config.REPLY_DRAFTER_DEBUG && i === 0) {
+          // Log knowledge config once at start
+          const hasInstructions = !!config.REPLY_DRAFTER_INSTRUCTIONS_URL;
+          const hasFolder = !!config.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL;
+          console.log('Reply Drafter: Knowledge configuration: instructions=' + hasInstructions + ', folder=' + hasFolder);
+        }
+
         const knowledge = fetchReplyKnowledge_({
           instructionsUrl: config.REPLY_DRAFTER_INSTRUCTIONS_URL,
           knowledgeFolderUrl: config.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL,
           maxDocs: config.REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS
         });
+
+        if (config.REPLY_DRAFTER_DEBUG && i === 0) {
+          // Log knowledge load result once at start
+          if (knowledge.configured) {
+            console.log('Reply Drafter: ✓ Loaded ' + knowledge.metadata.docCount + ' documents (' +
+                        knowledge.metadata.utilizationPercent + ' utilization)');
+          } else {
+            console.log('Reply Drafter: ℹ No knowledge configured - using basic drafting instructions');
+          }
+        }
 
         // Build AI prompt
         const prompt = buildReplyDraftPrompt_(threadData, knowledge);

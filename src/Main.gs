@@ -22,12 +22,28 @@ function run() {
   }
   ensureLabels_();
 
+  if (cfg.DEBUG) {
+    const hasInstructions = !!cfg.LABEL_INSTRUCTIONS_DOC_URL;
+    const hasFolder = !!cfg.LABEL_KNOWLEDGE_FOLDER_URL;
+    console.log('Email Labeling: Knowledge configuration: instructions=' + hasInstructions + ', folder=' + hasFolder);
+  }
+
   const knowledge = fetchLabelingKnowledge_({
     instructionsUrl: cfg.LABEL_INSTRUCTIONS_DOC_URL,
     knowledgeFolderUrl: cfg.LABEL_KNOWLEDGE_FOLDER_URL,
     maxDocs: cfg.LABEL_KNOWLEDGE_MAX_DOCS
   });
   // Note: No error check needed - fetchLabelingKnowledge_() handles fail-fast internally
+
+  if (cfg.DEBUG) {
+    if (knowledge.configured) {
+      console.log('Email Labeling: ✓ Loaded ' + knowledge.metadata.docCount + ' documents, ' +
+                  knowledge.metadata.estimatedTokens + ' tokens (' +
+                  knowledge.metadata.utilizationPercent + ' utilization)');
+    } else {
+      console.log('Email Labeling: ℹ No knowledge configured - using built-in classification rules');
+    }
+  }
 
   const threads = findUnprocessed_(cfg.MAX_EMAILS_PER_RUN);
   if (!threads.length) return console.log('No candidates.');

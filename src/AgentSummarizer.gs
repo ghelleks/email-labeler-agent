@@ -102,11 +102,27 @@ function generateSummaryFromEmails_(emails) {
     }
 
     // Fetch summarization knowledge (new: KnowledgeService integration)
+    if (config.SUMMARIZER_DEBUG) {
+      const hasInstructions = !!config.SUMMARIZER_INSTRUCTIONS_DOC_URL;
+      const hasFolder = !!config.SUMMARIZER_KNOWLEDGE_FOLDER_URL;
+      Logger.log('AgentSummarizer: Knowledge configuration: instructions=' + hasInstructions + ', folder=' + hasFolder);
+    }
+
     const knowledge = fetchSummarizerKnowledge_({
       instructionsUrl: config.SUMMARIZER_INSTRUCTIONS_DOC_URL,
       knowledgeFolderUrl: config.SUMMARIZER_KNOWLEDGE_FOLDER_URL,
       maxDocs: config.SUMMARIZER_KNOWLEDGE_MAX_DOCS
     });
+
+    if (config.SUMMARIZER_DEBUG) {
+      if (knowledge.configured) {
+        Logger.log('AgentSummarizer: ✓ Loaded ' + knowledge.metadata.docCount + ' documents, ' +
+                   knowledge.metadata.estimatedTokens + ' tokens (' +
+                   knowledge.metadata.utilizationPercent + ' utilization)');
+      } else {
+        Logger.log('AgentSummarizer: ℹ No knowledge configured - using basic summarization instructions');
+      }
+    }
 
     // Extract web links from emails for inclusion in summary
     const webLinks = extractWebLinksFromEmails_(emails);
