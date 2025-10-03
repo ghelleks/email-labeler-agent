@@ -167,11 +167,17 @@ Settings for the [Reply Drafter Agent](../agents/reply-drafter.md).
 
 **Note**: Reply Drafter configuration is managed in `AgentReplyDrafter.gs` via `getReplyDrafterConfig_()` function (ADR-014), not in core `Config.gs`. This follows the self-contained agent architecture pattern.
 
+**Execution Modes**: The Reply Drafter operates in two modes:
+1. **Agent Handler**: Runs during email classification (immediate draft creation for newly-classified emails)
+2. **Scheduled Batch**: Runs every 30 minutes to process ALL `reply_needed` emails (manually labeled, retries, historical emails)
+
+Install the scheduled batch trigger with `installReplyDrafterTrigger` function in Apps Script editor for comprehensive coverage.
+
 ### Basic Configuration
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `REPLY_DRAFTER_ENABLED` | `true` | Enable/disable the Reply Drafter agent |
+| `REPLY_DRAFTER_ENABLED` | `true` | Enable/disable the Reply Drafter agent (both execution modes) |
 
 ### Knowledge Configuration
 
@@ -194,6 +200,7 @@ Settings for the [Reply Drafter Agent](../agents/reply-drafter.md).
 ```
 REPLY_DRAFTER_ENABLED = true
 ```
+**Note**: Also install the scheduled batch trigger (`installReplyDrafterTrigger`) for comprehensive coverage of manually labeled emails.
 
 **Custom drafting style** (instructions only):
 ```

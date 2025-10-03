@@ -95,7 +95,10 @@ clasp --user work login        # Log into work account
 **Important**: Automated trigger installation via `clasp run` is unreliable due to permission issues. Triggers must be installed manually:
 
 1. Use `npm run open:personal` or `npm run open:work` to open Apps Script editor
-2. Select `installTrigger` from the function dropdown
+2. Select trigger installation function from the dropdown:
+   - `installTrigger` - Core email labeling trigger (hourly)
+   - `installSummarizerTrigger` - Email Summarizer trigger (daily)
+   - `installReplyDrafterTrigger` - Reply Drafter trigger (every 30 minutes)
 3. Click the Run button to install triggers
 4. Grant necessary permissions when prompted
 
@@ -150,6 +153,12 @@ Configuration uses Apps Script Script Properties accessible via the Apps Script 
 
 #### Reply Drafter Agent Configuration
 **Note**: Reply Drafter configuration is managed in `AgentReplyDrafter.gs` via `getReplyDrafterConfig_()` function (ADR-014), not in core `Config.gs`. The agent follows the self-contained architecture pattern.
+
+The Reply Drafter operates in two modes:
+1. **Agent Handler**: Runs during email classification (immediate draft creation)
+2. **Scheduled Batch**: Runs every 30 minutes to process existing `reply_needed` emails
+
+This dual-mode architecture ensures drafts are created for both newly-classified emails and manually-labeled emails.
 
 - `REPLY_DRAFTER_ENABLED`: Enable/disable Reply Drafter agent (default: true)
 - `REPLY_DRAFTER_INSTRUCTIONS_URL`: Google Docs URL with drafting style/methodology (optional)
@@ -226,8 +235,8 @@ AGENT_MODULES.push(function(api) {
 ```
 
 **Examples of Self-Contained Agents**:
-- **AgentReplyDrafter.gs**: Generates draft replies for `reply_needed` emails (no trigger, runs in pipeline)
-- **AgentSummarizer.gs**: Daily email summaries for `summarize` label (has own trigger)
+- **AgentReplyDrafter.gs**: Generates draft replies for `reply_needed` emails (dual-mode: agent handler + 30-minute scheduled batch)
+- **AgentSummarizer.gs**: Daily email summaries for `summarize` label (dual-mode: agent handler + daily scheduled batch)
 
 #### Traditional Agents (Simple Cases)
 For simple post-processing agents:
@@ -563,16 +572,20 @@ Refer to `docs/adr/` for complete context:
 - **Solution**: Ensure account name in `accounts.json` matches the file suffix
 
 **🔍 Problem**: Trigger installation fails
-- **Solution**: Install triggers manually in Apps Script editor using `installTrigger` function
-- **Solution**: For Email Summarizer, use `installSummarizerTrigger` function
+- **Solution**: Install triggers manually in Apps Script editor
+  - Core labeling: `installTrigger` function
+  - Email Summarizer: `installSummarizerTrigger` function
+  - Reply Drafter: `installReplyDrafterTrigger` function
 - **Solution**: Automated `clasp run` trigger installation is unreliable due to permissions
 
 **🔍 Problem**: Reply Drafter not creating drafts
 - **Solution**: Verify `REPLY_DRAFTER_ENABLED=true` in Script Properties
 - **Solution**: Check that emails have `reply_needed` label applied by core classification
+- **Solution**: Install scheduled batch trigger: `installReplyDrafterTrigger` function in Apps Script editor
 - **Solution**: Enable `REPLY_DRAFTER_DEBUG=true` for detailed logging
 - **Solution**: Test with `REPLY_DRAFTER_DRY_RUN=true` to verify agent runs without draft creation
 - **Solution**: Check execution logs for idempotency messages (draft may already exist)
+- **Solution**: For manually labeled emails, wait for next 30-minute scheduled run or run `runReplyDrafter` manually
 
 **🔍 Problem**: Email Summarizer not working
 - **Solution**: Verify `SUMMARIZER_ENABLED=true` in Script Properties

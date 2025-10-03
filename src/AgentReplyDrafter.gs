@@ -9,11 +9,16 @@
  * - Creates Gmail draft replies automatically
  * - Runs after labeling (respects dry-run mode)
  *
+ * Execution Modes:
+ * 1. Agent Handler: Runs during email classification (immediate draft creation)
+ * 2. Scheduled Batch: Runs every 30 minutes to process existing labeled emails
+ *
  * Features:
  * - Self-contained: manages own config without core Config.gs changes
  * - Idempotent: skips emails that already have drafts
  * - Knowledge-aware: optionally uses drafting instructions and context
  * - Thread-aware: processes full conversation history
+ * - Batch processing: handles manually labeled emails and retries
  * - Full error handling and dry-run support
  */
 
@@ -273,6 +278,174 @@ function processReplyNeeded_(ctx) {
     ctx.log('Reply Drafter agent error: ' + error.toString());
     return { status: 'error', info: error.toString() };
   }
+}
+
+// ============================================================================
+// Scheduled Batch Processing
+// ============================================================================
+
+/**
+ * Process all existing emails with "reply_needed" label
+ * Runs on a schedule (default: every 30 minutes) to handle:
+ * - Manually labeled emails
+ * - Emails labeled before agent was deployed
+ * - Failed draft creations that need retry
+ *
+ * This complements the agent handler which runs during classification.
+ */
+function runReplyDrafter() {
+  try {
+    const config = getReplyDrafterConfig_();
+
+    if (!config.REPLY_DRAFTER_ENABLED) {
+      console.log('Reply Drafter is disabled');
+      return { success: false, reason: 'disabled' };
+    }
+
+    if (config.REPLY_DRAFTER_DEBUG) {
+      console.log('Reply Drafter: Starting scheduled batch run');
+    }
+
+    // Find all emails with "reply_needed" label in inbox
+    const query = 'in:inbox label:reply_needed';
+    const threads = GmailApp.search(query);
+
+    if (threads.length === 0) {
+      if (config.REPLY_DRAFTER_DEBUG) {
+        console.log('Reply Drafter: No emails found with reply_needed label');
+      }
+      return { success: true, reason: 'no_emails', processed: 0 };
+    }
+
+    console.log(`Reply Drafter: Found ${threads.length} emails with reply_needed label`);
+
+    let processed = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (let i = 0; i < threads.length; i++) {
+      const thread = threads[i];
+      const threadId = thread.getId();
+
+      try {
+        // Check if draft already exists (idempotency)
+        if (draftExistsForThread_(threadId)) {
+          skipped++;
+          if (config.REPLY_DRAFTER_DEBUG) {
+            console.log(`Reply Drafter: Skipping thread ${threadId} (draft already exists)`);
+          }
+          continue;
+        }
+
+        // Get thread data
+        const threadData = getEmailThread_(threadId);
+        if (!threadData || !threadData.messages || threadData.messages.length === 0) {
+          console.log(`Reply Drafter: Skipping thread ${threadId} (no messages)`);
+          skipped++;
+          continue;
+        }
+
+        // Fetch knowledge if configured
+        const knowledge = fetchReplyKnowledge_({
+          instructionsUrl: config.REPLY_DRAFTER_INSTRUCTIONS_URL,
+          knowledgeFolderUrl: config.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL,
+          maxDocs: config.REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS
+        });
+
+        // Build AI prompt
+        const prompt = buildReplyDraftPrompt_(threadData, knowledge);
+
+        // Get AI configuration
+        const cfg = getConfig_();
+        const model = cfg.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+        const projectId = cfg.PROJECT_ID;
+        const location = cfg.VERTEX_LOCATION || 'us-central1';
+        const apiKey = cfg.GEMINI_API_KEY;
+
+        // Generate reply draft
+        let draftText;
+        if (config.REPLY_DRAFTER_DRY_RUN) {
+          console.log(`Reply Drafter: DRY RUN - Would generate draft for thread ${threadId}`);
+          draftText = '[DRY RUN] Draft would be generated here';
+        } else {
+          draftText = generateReplyDraft_(prompt, model, projectId, location, apiKey);
+        }
+
+        // Create Gmail draft
+        if (!config.REPLY_DRAFTER_DRY_RUN) {
+          const draftResult = createDraftReply_(threadId, draftText);
+
+          if (!draftResult.success) {
+            console.log(`Reply Drafter: Failed to create draft for thread ${threadId} - ${draftResult.error}`);
+            errors++;
+            continue;
+          }
+
+          console.log(`Reply Drafter: Created draft for thread ${threadId}`);
+        }
+
+        processed++;
+
+      } catch (error) {
+        errors++;
+        console.log(`Reply Drafter: Error processing thread ${threadId} - ${error.toString()}`);
+      }
+    }
+
+    const summary = `Reply Drafter completed: processed ${processed}, skipped ${skipped}, errors ${errors} (total: ${threads.length})`;
+    console.log(summary);
+
+    return {
+      success: true,
+      total: threads.length,
+      processed: processed,
+      skipped: skipped,
+      errors: errors,
+      message: summary
+    };
+
+  } catch (error) {
+    const errorMsg = 'Reply Drafter scheduled run error: ' + error.toString();
+    console.log(errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+// ============================================================================
+// Trigger Management (Self-Contained)
+// ============================================================================
+
+/**
+ * Install trigger for Reply Drafter batch processing
+ * Default: runs every 30 minutes to process existing reply_needed emails
+ */
+function installReplyDrafterTrigger() {
+  // Use shared utility for trigger management (30-minute interval)
+  const result = createTimeTrigger_('runReplyDrafter', {
+    type: 'minutes',
+    interval: 30
+  });
+
+  if (result.success) {
+    console.log('Reply Drafter trigger installed successfully (every 30 minutes)');
+  }
+  return result;
+}
+
+/**
+ * Remove all Reply Drafter triggers
+ */
+function deleteReplyDrafterTriggers_() {
+  // Use shared utility for trigger cleanup
+  return deleteTriggersByFunction_('runReplyDrafter');
+}
+
+/**
+ * List Reply Drafter triggers for debugging
+ */
+function listReplyDrafterTriggers() {
+  // Use shared utility for trigger listing
+  return listTriggersByFunction_('runReplyDrafter');
 }
 
 // ============================================================================

@@ -118,11 +118,17 @@ The core email labeling is complete! These advanced features are optional add-on
 
 Perfect for generating professional, context-aware draft responses to questions, meeting requests, and routine correspondence. AI analyzes the full email thread and creates drafts you can review and send.
 
+**How it works**:
+- Immediate draft creation for newly-classified emails (agent handler)
+- Every 30 minutes, processes ALL `reply_needed` emails in inbox (scheduled batch)
+- Comprehensive coverage for manually labeled emails, retries, and historical emails
+
 **Quick configuration example**:
 ```
 REPLY_DRAFTER_ENABLED = true
 REPLY_DRAFTER_INSTRUCTIONS_URL = https://docs.google.com/document/d/YOUR_DOC_ID/edit
 ```
+**Setup**: Install scheduled batch trigger with `installReplyDrafterTrigger` function in Apps Script editor.
 
 [Reply Drafter Documentation →](docs/agents/reply-drafter.md)
 

@@ -7,15 +7,16 @@ The Reply Drafter is an intelligent agent that automatically creates draft repli
 The Reply Drafter agent:
 
 - **Monitors** emails labeled as `reply_needed` by the core classification system
+- **Processes both new and existing emails** through dual execution modes (see below)
 - **Checks idempotency** to ensure drafts aren't created multiple times
 - **Fetches optional knowledge** from Google Drive for personalized drafting style
 - **Retrieves full thread context** including all messages in the conversation
 - **Generates professional drafts** using AI with full thread awareness
 - **Creates Gmail draft replies** automatically attached to the original thread
-- **Runs after labeling** as part of the agent post-processing pipeline
+- **Runs continuously** via both immediate processing and scheduled batch runs
 - **Respects dry-run mode** for safe testing before enabling
 
-This agent operates automatically after the core email labeling system applies the `reply_needed` label, requiring no manual intervention once configured.
+This agent operates automatically through two complementary execution modes, requiring no manual intervention once configured.
 
 ## Perfect For
 
@@ -37,10 +38,17 @@ This agent operates automatically after the core email labeling system applies t
 
 1. **Enable the agent** (already enabled by default):
    - The Reply Drafter is active as soon as emails receive the `reply_needed` label
-   - No trigger installation required (runs as part of core email processing)
+   - Agent handler runs automatically during core email processing (no trigger needed)
    - Works immediately with default professional drafting style
 
-2. **Customize drafting style** (optional):
+2. **Install scheduled batch trigger** (recommended):
+   - Open Apps Script editor: `npm run open:personal` (or `:work`)
+   - Select `installReplyDrafterTrigger` from the function dropdown
+   - Click the Run button (▶️) to install the trigger
+   - Grant necessary permissions when prompted
+   - The scheduled batch will run every 30 minutes to process existing labeled emails
+
+3. **Customize drafting style** (optional):
    - Create a Google Doc with your drafting instructions (tone, style, length)
    - Configure `REPLY_DRAFTER_INSTRUCTIONS_URL` with the document URL
    - See [Knowledge Customization](#knowledge-customization) section below
@@ -58,17 +66,44 @@ This agent operates automatically after the core email labeling system applies t
 
 ## How It Works
 
-### Workflow
+### Dual Execution Modes
 
-1. **Core Labeling**: Email classification system applies `reply_needed` label
-2. **Agent Activation**: Reply Drafter agent processes the labeled email
-3. **Idempotency Check**: Verifies no draft already exists for the thread
-4. **Knowledge Fetching**: Retrieves optional instructions and context from Google Drive
-5. **Thread Retrieval**: Fetches full email conversation (all messages in thread)
-6. **Prompt Building**: Constructs AI prompt with thread context and knowledge
-7. **AI Generation**: Gemini AI generates professional draft reply
-8. **Draft Creation**: Gmail draft attached as reply to the latest message
-9. **Completion**: Agent marks email as processed and logs result
+The Reply Drafter operates in two complementary modes to ensure comprehensive draft coverage:
+
+#### Mode 1: Agent Handler (Immediate Processing)
+Runs during the core email classification pipeline:
+- **Trigger**: Email is newly classified as `reply_needed`
+- **Timing**: Immediately after labeling completes
+- **Coverage**: Only newly-classified emails
+- **Use case**: Fast draft creation for incoming emails
+
+#### Mode 2: Scheduled Batch Processing (Comprehensive Coverage)
+Runs every 30 minutes on a scheduled trigger:
+- **Trigger**: Time-based (every 30 minutes)
+- **Timing**: Independent of email classification
+- **Coverage**: ALL emails with `reply_needed` label in inbox
+- **Use case**: Manually labeled emails, retries for failed drafts, emails labeled before agent existed
+
+**Why both modes?**
+The agent handler only processes emails during classification. It never sees:
+- Emails you manually label with `reply_needed`
+- Emails that had `reply_needed` before the agent was deployed
+- Emails where draft creation previously failed
+
+The scheduled batch processor fills this gap by searching for ALL `reply_needed` emails and creating drafts for any that don't have one yet.
+
+### Workflow (Both Modes)
+
+1. **Email Discovery**:
+   - Agent handler: Receives email from classification pipeline
+   - Scheduled batch: Searches inbox for `label:reply_needed`
+2. **Idempotency Check**: Verifies no draft already exists for the thread
+3. **Knowledge Fetching**: Retrieves optional instructions and context from Google Drive
+4. **Thread Retrieval**: Fetches full email conversation (all messages in thread)
+5. **Prompt Building**: Constructs AI prompt with thread context and knowledge
+6. **AI Generation**: Gemini AI generates professional draft reply
+7. **Draft Creation**: Gmail draft attached as reply to the latest message
+8. **Completion**: Agent logs result and moves to next email
 
 ### Idempotent Operation
 
@@ -108,12 +143,33 @@ Add these properties to Script Properties in the Apps Script editor:
 | `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL` | None | Google Drive folder URL with knowledge documents (ADR-015) |
 | `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | `5` | Maximum documents to fetch from knowledge folder (ADR-015) |
 
+### Trigger Installation
+
+The scheduled batch processor requires manual trigger installation:
+
+1. **Open Apps Script editor**:
+   ```bash
+   npm run open:personal  # or open:work for work account
+   ```
+
+2. **Install trigger**:
+   - Select `installReplyDrafterTrigger` from the function dropdown
+   - Click the Run button (▶️)
+   - Grant necessary permissions when prompted
+
+3. **Verify installation**:
+   - Click "Triggers" in the left sidebar
+   - Confirm `runReplyDrafter` trigger appears with "Every 30 minutes" schedule
+
+**Note**: The agent handler requires no trigger installation - it runs automatically as part of the core email processing pipeline.
+
 ### Configuration Examples
 
 **Basic setup** (use default drafting style):
 ```
 REPLY_DRAFTER_ENABLED = true
 ```
+**Note**: Also install the scheduled batch trigger (see above) for comprehensive coverage.
 
 **Custom drafting style** (instructions only):
 ```
@@ -513,9 +569,27 @@ The Reply Drafter follows the [self-contained agent architecture](../../docs/adr
 
 - **Self-registration**: Automatically registers with `AGENT_MODULES.push()` pattern
 - **Independent configuration**: Manages own Script Properties without modifying core Config.gs
-- **No trigger management**: Runs as part of core email labeling pipeline (no separate trigger)
+- **Dual-mode execution**: Agent handler (no trigger) + scheduled batch processor (30-minute trigger)
 - **Idempotent execution**: Safe to re-run without side effects
 - **Full error handling**: Comprehensive logging and graceful degradation
+
+### Dual Execution Architecture
+
+The Reply Drafter mirrors the Email Summarizer's dual-mode pattern:
+
+**Agent Handler** (`processReplyNeeded_`):
+- Runs within classification pipeline
+- No trigger required
+- Processes newly-classified emails only
+- Fast, immediate draft creation
+
+**Scheduled Batch** (`runReplyDrafter`):
+- Runs every 30 minutes via time trigger
+- Requires manual trigger installation
+- Processes ALL `reply_needed` emails in inbox
+- Catches manually labeled emails, retries, and historical emails
+
+This architecture ensures comprehensive coverage - no `reply_needed` email goes without a draft, regardless of how it got the label.
 
 ### Integration with Core System
 
@@ -584,9 +658,13 @@ const draftText = generateReplyDraft_(prompt, model, projectId, location, apiKey
 
 **Solution**: Check that core email labeling is applying `reply_needed` labels
 
+**Solution**: Install scheduled batch trigger using `installReplyDrafterTrigger` function
+
 **Solution**: Enable `REPLY_DRAFTER_DEBUG=true` and check execution logs
 
 **Solution**: Test with `REPLY_DRAFTER_DRY_RUN=true` to verify agent runs without draft creation
+
+**Solution**: For manually labeled emails, wait for next 30-minute scheduled run or run `runReplyDrafter` manually in Apps Script editor
 
 ### Drafts not appearing in Gmail
 
