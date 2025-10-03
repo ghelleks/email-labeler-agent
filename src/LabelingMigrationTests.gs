@@ -142,7 +142,8 @@ function testPromptBuilding() {
       sampleEmails,
       knowledge,
       ['reply_needed', 'review', 'todo', 'summarize'],
-      'summarize'
+      'summarize',
+      null  // No global knowledge for this test
     );
 
     Logger.log('✅ Prompt built successfully\n');
@@ -314,7 +315,7 @@ function testNoKnowledgeScenario() {
     }];
 
     const prompt = buildCategorizePrompt_(sampleEmails, knowledge,
-      ['reply_needed', 'review', 'todo', 'summarize'], 'summarize');
+      ['reply_needed', 'review', 'todo', 'summarize'], 'summarize', null);
 
     Logger.log('\nPrompt built without knowledge:');
     Logger.log('  Length: ' + prompt.length + ' chars');

@@ -162,6 +162,8 @@ Deploy and maintain email automation across all your accounts with streamlined c
 
 Teach the AI about your specific email patterns, priorities, and preferences using Google Drive documents.
 
+**NEW: Global Knowledge Folder** — Share organizational context (team structure, projects, terminology) across ALL AI operations with a single configuration. Eliminates duplication and ensures consistency.
+
 [Knowledge System Documentation →](docs/features/knowledge-system.md)
 
 ---

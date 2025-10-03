@@ -43,6 +43,10 @@ Vertex mode (optional):
 - `GOOGLE_CLOUD_PROJECT` (or `PROJECT_ID`): required only if no API key is set
 - `GOOGLE_CLOUD_LOCATION`: default `us-central1`
 
+Global Knowledge (ADR-019, optional):
+- `GLOBAL_KNOWLEDGE_FOLDER_URL`: Organization-wide context folder shared across all AI features
+- `GLOBAL_KNOWLEDGE_MAX_DOCS`: default `5` (max documents from global knowledge folder)
+
 Email Summarizer Agent (optional):
 - `SUMMARIZER_ENABLED`: default `true`
 - `SUMMARIZER_MAX_AGE_DAYS`: default `7` (days of emails to include)
@@ -185,6 +189,131 @@ The Email Summarizer trigger is separate from the main email processing trigger 
 - Vertex errors: ensure project is linked in Apps Script and use numeric project number if needed.
 - View logs: set `DEBUG=true` and re-run.
 
+## Knowledge Architecture (ADR-019)
+
+The system uses a two-tier knowledge model to provide AI context efficiently and consistently:
+
+### Knowledge Hierarchy
+
+**1. Global Knowledge (Organization-Wide Context)**
+- Configuration: `GLOBAL_KNOWLEDGE_FOLDER_URL` + `GLOBAL_KNOWLEDGE_MAX_DOCS`
+- Applies to: ALL AI operations (categorization, summarization, reply drafting, future features)
+- Fetched: Once per execution in `Main.gs`
+- Contains: Team structure, projects, terminology, domain knowledge
+- Injection order: FIRST (before feature-specific knowledge)
+- Purpose: Eliminate duplication of organizational context
+
+**2. Feature-Specific Knowledge (Task-Specific Instructions)**
+- Configuration: Per-feature properties (e.g., `REPLY_DRAFTER_INSTRUCTIONS_URL`)
+- Applies to: Individual AI features only
+- Fetched: By each agent/feature as needed
+- Contains: How to perform specific task (tone, style, examples)
+- Injection order: SECOND (after global knowledge)
+- Purpose: Customize behavior for specific AI operations
+
+### Prompt Injection Order
+
+All AI prompts follow this structure:
+```
+1. Base instructions (built-in system prompts)
+2. GLOBAL KNOWLEDGE (organizational context - ADR-019)
+3. Feature-specific knowledge (task instructions)
+4. Task data (emails, threads, content to process)
+```
+
+### Example Configuration
+
+**Global Knowledge Folder:**
+```
+Organization Context/
+├── team-structure.gdoc      (engineering teams, reporting hierarchy)
+├── project-phoenix.gdoc      (Q1 priority initiative context)
+├── terminology.gdoc          (RFR = Ready for Review, P0 = critical)
+└── domain-knowledge.gdoc     (company builds email AI tools)
+```
+
+**Feature-Specific Knowledge:**
+```
+LABEL_KNOWLEDGE_FOLDER_URL     (classification examples, edge cases)
+REPLY_DRAFTER_INSTRUCTIONS_URL (tone: professional but warm)
+REPLY_DRAFTER_KNOWLEDGE_FOLDER (example drafts, templates)
+```
+
+### When to Use Global vs. Feature-Specific Knowledge
+
+**Use Global Knowledge For:**
+- Organizational structure and teams
+- Project context and priorities
+- Company-specific terminology
+- Domain/industry background
+- Business processes common to all operations
+
+**Use Feature-Specific Knowledge For:**
+- How to classify emails (labeling methodology)
+- Reply drafting tone and style
+- Summary format preferences
+- Task-specific examples and templates
+
+### Implementation Pattern for Agents
+
+**Fetch global knowledge in agent handlers:**
+```javascript
+function agentOnLabel_(ctx) {
+  // 1. Fetch global knowledge (shared across all features)
+  const cfg = getConfig_();
+  const globalKnowledge = fetchGlobalKnowledge_({
+    folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
+    maxDocs: parseInt(cfg.GLOBAL_KNOWLEDGE_MAX_DOCS || '5')
+  });
+
+  // 2. Fetch agent-specific knowledge
+  const agentKnowledge = fetchAgentKnowledge_({
+    instructionsUrl: cfg.AGENT_INSTRUCTIONS_URL,
+    knowledgeFolderUrl: cfg.AGENT_KNOWLEDGE_FOLDER_URL,
+    maxDocs: parseInt(cfg.AGENT_KNOWLEDGE_MAX_DOCS || '5')
+  });
+
+  // 3. Build prompt with both (global injected first)
+  const prompt = buildAgentPrompt_(ctx, agentKnowledge, globalKnowledge);
+
+  // 4. Call AI service
+  const result = callLLMService_(prompt);
+}
+```
+
+### Token Budget Management
+
+**Combined token utilization:**
+- Global knowledge: Applies to ALL AI operations
+- Feature knowledge: Applies to specific operation
+- Total tokens: Global + Feature + Task data
+- Warnings: Soft at 50% capacity, critical at 90%
+
+**Best practices:**
+- Keep global knowledge focused (10-20K tokens ideal)
+- Use `GLOBAL_KNOWLEDGE_MAX_DOCS` to limit size
+- Monitor utilization with `KNOWLEDGE_DEBUG=true`
+- Reduce feature-specific knowledge if approaching limits
+
+### Benefits of Global Knowledge Architecture
+
+**Eliminates duplication:**
+- Write organizational context once, use everywhere
+- No need to duplicate in labeling, reply, and summary knowledge
+
+**Consistency:**
+- All AI operations share same understanding
+- Update once, applies to all features
+
+**Token efficiency:**
+- Single fetch reduces Drive API quota usage
+- Caching reduces repeat fetches (30-minute TTL)
+- Reduces total token consumption vs. duplication
+
+**Future-proof:**
+- New AI features automatically inherit global knowledge
+- No per-feature configuration for organizational context
+
 ## Extending the System
 - Add rules examples to improve accuracy.
 - Adjust label set by editing `ensureLabels_()` and normalization in `Categorizer.gs`.
@@ -236,6 +365,19 @@ function agentOnLabel_(ctx) {
       return { status: 'skip', info: 'agent disabled' };
     }
 
+    // IMPORTANT: Fetch global knowledge if agent needs it (ADR-019)
+    const cfg = getConfig_();
+    const globalKnowledge = fetchGlobalKnowledge_({
+      folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
+      maxDocs: parseInt(cfg.GLOBAL_KNOWLEDGE_MAX_DOCS || '5')
+    });
+
+    // Fetch agent-specific knowledge
+    const agentKnowledge = fetchAgentKnowledge_({...});
+
+    // Pass both to prompt builder
+    const prompt = buildAgentPrompt_(ctx, agentKnowledge, globalKnowledge);
+
     // Immediate action when email is labeled
     // Example: archive, forward, create draft, etc.
     return { status: 'ok', info: 'immediate action completed' };
@@ -250,6 +392,16 @@ function agentPostLabel_() {
     const config = getAgentConfig_();
     if (!config.AGENT_ENABLED) return;
 
+    // IMPORTANT: Fetch global knowledge if agent needs it (ADR-019)
+    const cfg = getConfig_();
+    const globalKnowledge = fetchGlobalKnowledge_({
+      folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
+      maxDocs: parseInt(cfg.GLOBAL_KNOWLEDGE_MAX_DOCS || '5')
+    });
+
+    // Fetch agent-specific knowledge
+    const agentKnowledge = fetchAgentKnowledge_({...});
+
     // Search inbox for all emails with target label
     const query = 'in:inbox label:target_label';
     const threads = GmailApp.search(query);
@@ -257,6 +409,8 @@ function agentPostLabel_() {
     // Process each thread
     threads.forEach(function(thread) {
       // Check idempotency before processing
+      // Pass both global and agent knowledge to prompt builder
+      const prompt = buildAgentPrompt_(thread, agentKnowledge, globalKnowledge);
       // Perform batch operations
     });
 

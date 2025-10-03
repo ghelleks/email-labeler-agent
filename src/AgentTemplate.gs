@@ -107,8 +107,14 @@ function templateAgentOnLabel_(ctx) {
     //   maxDocs: config.TEMPLATE_KNOWLEDGE_MAX_DOCS
     // });
     //
+    // Fetch global knowledge (shared across all AI operations)
+    // const globalKnowledge = fetchGlobalKnowledge_({
+    //   folderUrl: ctx.cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
+    //   maxDocs: ctx.cfg.GLOBAL_KNOWLEDGE_MAX_DOCS
+    // });
+    //
     // Build AI prompt with knowledge injection
-    // const prompt = buildTemplatePrompt_(emailData, knowledge, config);
+    // const prompt = buildTemplatePrompt_(emailData, knowledge, globalKnowledge, config);
     //
     // Call LLMService with built prompt
     // const result = someAIFunction_(prompt, config);
@@ -348,12 +354,20 @@ function fetchTemplateAgentKnowledge_(config) {
  *
  * This example shows in-agent prompt building. For shared prompts, add to PromptBuilder.gs.
  */
-function buildTemplatePromptWithKnowledge_(items, knowledge, config) {
+function buildTemplatePromptWithKnowledge_(items, knowledge, globalKnowledge, config) {
   const parts = [
     'You are an AI assistant for [AGENT PURPOSE].'
   ];
 
-  // CONDITIONAL KNOWLEDGE INJECTION
+  // GLOBAL KNOWLEDGE INJECTION (shared across all agents)
+  if (globalKnowledge && globalKnowledge.configured) {
+    parts.push('');
+    parts.push('=== GLOBAL CONTEXT ===');
+    parts.push('The following information applies to all email processing:');
+    parts.push(globalKnowledge.knowledge);
+  }
+
+  // AGENT-SPECIFIC KNOWLEDGE INJECTION
   if (knowledge && knowledge.configured) {
     parts.push('');
     parts.push('=== AGENT GUIDELINES ===');

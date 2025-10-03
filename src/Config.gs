@@ -26,6 +26,9 @@ function getConfig_() {
     WEBAPP_ENABLED: (p.getProperty('WEBAPP_ENABLED') || 'true').toLowerCase() === 'true',
     WEBAPP_MAX_EMAILS_PER_SUMMARY: parseInt(p.getProperty('WEBAPP_MAX_EMAILS_PER_SUMMARY') || '50', 10),
     // KnowledgeService Configuration
+    // Global Knowledge (applies to ALL AI operations - ADR-019)
+    GLOBAL_KNOWLEDGE_FOLDER_URL: p.getProperty('GLOBAL_KNOWLEDGE_FOLDER_URL'),
+    GLOBAL_KNOWLEDGE_MAX_DOCS: parseInt(p.getProperty('GLOBAL_KNOWLEDGE_MAX_DOCS') || '5', 10),
     // Email Labeling Knowledge (INSTRUCTIONS = how to label, KNOWLEDGE = contextual reference)
     LABEL_INSTRUCTIONS_DOC_URL: p.getProperty('LABEL_INSTRUCTIONS_DOC_URL'),
     LABEL_KNOWLEDGE_FOLDER_URL: p.getProperty('LABEL_KNOWLEDGE_FOLDER_URL'),

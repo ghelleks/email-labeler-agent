@@ -1,4 +1,4 @@
-function categorizeWithGemini_(emails, knowledge, cfg) {
+function categorizeWithGemini_(emails, knowledge, cfg, globalKnowledge) {
   const allowed = new Set(['reply_needed','review','todo','summarize']);
   const batches = [];
   for (let i = 0; i < emails.length; i += cfg.BATCH_SIZE) {
@@ -14,7 +14,7 @@ function categorizeWithGemini_(emails, knowledge, cfg) {
     // Build prompt using PromptBuilder (enforces separation of concerns)
     const prompt = buildCategorizePrompt_(batch, knowledge,
       ['reply_needed', 'review', 'todo', 'summarize'],
-      cfg.DEFAULT_FALLBACK_LABEL);
+      cfg.DEFAULT_FALLBACK_LABEL, globalKnowledge);
 
     // LLMService now receives complete prompt (no longer builds it internally)
     const out = categorizeBatch_(prompt, cfg.MODEL_PRIMARY, cfg.PROJECT_ID,

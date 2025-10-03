@@ -849,3 +849,78 @@ function fetchSummarizerKnowledge_(config) {
 
   return result;
 }
+
+// ============================================================================
+// GLOBAL KNOWLEDGE: System-wide Context
+// ============================================================================
+
+/**
+ * Fetch global knowledge folder that applies to ALL AI prompts
+ *
+ * Provides organizational context, terminology, and background information
+ * that enhances all AI operations (categorization, summarization, reply drafting).
+ *
+ * Configuration Properties:
+ * - GLOBAL_KNOWLEDGE_FOLDER_URL: Folder with organization/context documents
+ * - GLOBAL_KNOWLEDGE_MAX_DOCS: Max documents to fetch (default: 5)
+ *
+ * Usage Pattern:
+ * - Fetch once at execution entry point (Main.gs)
+ * - Pass to all prompt builders as `globalKnowledge` parameter
+ * - Injected BEFORE agent-specific knowledge in prompts
+ *
+ * @return {Object} { configured: boolean, knowledge: string|null, metadata: Object|null }
+ *
+ * @example
+ * // Not configured
+ * const globalKnowledge = fetchGlobalKnowledge_();
+ * // Returns: { configured: false, knowledge: null, metadata: null }
+ *
+ * @example
+ * // Valid folder with 3 documents
+ * const globalKnowledge = fetchGlobalKnowledge_();
+ * // Returns: {
+ * //   configured: true,
+ * //   knowledge: "=== Team Structure ===\n...\n\n=== Projects ===\n...",
+ * //   metadata: {
+ * //     docCount: 3,
+ * //     estimatedTokens: 2500,
+ * //     utilizationPercent: "0.2%",
+ * //     sources: [...]
+ * //   }
+ * // }
+ */
+function fetchGlobalKnowledge_() {
+  const cfg = getConfig_();
+  const folderUrl = cfg.GLOBAL_KNOWLEDGE_FOLDER_URL;
+  const maxDocs = parseInt(cfg.GLOBAL_KNOWLEDGE_MAX_DOCS || '5');
+
+  // Not configured - return early
+  if (!folderUrl) {
+    return {
+      configured: false,
+      knowledge: null,
+      metadata: null
+    };
+  }
+
+  // Fetch global knowledge folder
+  const result = fetchFolder_(folderUrl, {
+    propertyName: 'GLOBAL_KNOWLEDGE_FOLDER_URL',
+    maxDocs: maxDocs
+  });
+
+  // Log token warnings if configured and approaching capacity
+  if (result.configured && result.metadata) {
+    logTokenWarnings_(result.metadata);
+
+    // Debug logging
+    if (cfg.KNOWLEDGE_DEBUG === 'true') {
+      Logger.log('Global knowledge loaded: ' + result.metadata.docCount + ' documents, ' +
+                 result.metadata.estimatedTokens + ' tokens (' +
+                 result.metadata.utilizationPercent + ')');
+    }
+  }
+
+  return result;
+}

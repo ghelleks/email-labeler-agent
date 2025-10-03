@@ -237,10 +237,24 @@ function processReplyNeeded_(ctx) {
       return { status: 'error', info: 'thread retrieval failed: ' + threadError.toString() };
     }
 
+    // Fetch global knowledge (shared across all AI operations)
+    let globalKnowledge;
+    try {
+      globalKnowledge = fetchGlobalKnowledge_();
+
+      if (config.REPLY_DRAFTER_DEBUG && globalKnowledge.configured) {
+        ctx.log('✓ Loaded global knowledge: ' + globalKnowledge.metadata.docCount + ' documents (' +
+                globalKnowledge.metadata.utilizationPercent + ' utilization)');
+      }
+    } catch (globalKnowledgeError) {
+      ctx.log('✗ Global knowledge fetch failed: ' + globalKnowledgeError.toString());
+      return { status: 'error', info: 'global knowledge fetch failed: ' + globalKnowledgeError.toString() };
+    }
+
     // Build prompt via PromptBuilder
     let prompt;
     try {
-      prompt = buildReplyDraftPrompt_(emailThread, knowledge);
+      prompt = buildReplyDraftPrompt_(emailThread, knowledge, globalKnowledge);
 
       if (config.REPLY_DRAFTER_DEBUG) {
         ctx.log('Built prompt: ' + prompt.length + ' characters');
@@ -381,11 +395,19 @@ function replyDrafterPostLabelScan_() {
           }
         }
 
-        // Build AI prompt
-        const prompt = buildReplyDraftPrompt_(threadData, knowledge);
-
         // Get AI configuration
         const cfg = getConfig_();
+
+        // Fetch global knowledge (shared across all AI operations)
+        const globalKnowledge = fetchGlobalKnowledge_();
+
+        if (config.REPLY_DRAFTER_DEBUG && i === 0 && globalKnowledge.configured) {
+          Logger.log('Reply Drafter postLabel: ✓ Loaded global knowledge: ' + globalKnowledge.metadata.docCount + ' documents (' +
+                      globalKnowledge.metadata.utilizationPercent + ' utilization)');
+        }
+
+        // Build AI prompt
+        const prompt = buildReplyDraftPrompt_(threadData, knowledge, globalKnowledge);
         const model = cfg.GEMINI_MODEL || 'gemini-2.0-flash-exp';
         const projectId = cfg.PROJECT_ID;
         const location = cfg.VERTEX_LOCATION || 'us-central1';

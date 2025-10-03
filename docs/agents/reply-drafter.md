@@ -9,9 +9,10 @@ The Reply Drafter agent:
 - **Monitors** emails labeled as `reply_needed` by the core classification system
 - **Processes both new and existing emails** through dual-hook architecture (see below)
 - **Checks idempotency** to ensure drafts aren't created multiple times
-- **Fetches optional knowledge** from Google Drive for personalized drafting style
+- **Fetches global knowledge** from organization-wide context folder (ADR-019, optional)
+- **Fetches agent-specific knowledge** from Google Drive for personalized drafting style (optional)
 - **Retrieves full thread context** including all messages in the conversation
-- **Generates professional drafts** using AI with full thread awareness
+- **Generates professional drafts** using AI with full thread awareness and organizational context
 - **Creates Gmail draft replies** automatically attached to the original thread
 - **Runs automatically** via the hourly email processing trigger (no separate trigger needed)
 - **Respects dry-run mode** for safe testing before enabling
@@ -98,10 +99,12 @@ The postLabel hook fills this gap by scanning the inbox for ALL `reply_needed` e
    - onLabel: Receives email context from classification pipeline
    - postLabel: Searches inbox for `in:inbox label:reply_needed`
 2. **Idempotency Check**: Verifies no draft already exists for the thread
-3. **Knowledge Fetching**: Retrieves optional instructions and context from Google Drive
+3. **Knowledge Fetching**:
+   - Retrieves global organizational context (ADR-019, applies to all AI operations)
+   - Retrieves agent-specific instructions and examples from Google Drive
 4. **Thread Retrieval**: Fetches full email conversation (all messages in thread)
-5. **Prompt Building**: Constructs AI prompt with thread context and knowledge
-6. **AI Generation**: Gemini AI generates professional draft reply
+5. **Prompt Building**: Constructs AI prompt with global knowledge, agent knowledge, and thread context
+6. **AI Generation**: Gemini AI generates professional draft reply with organizational awareness
 7. **Draft Creation**: Gmail draft attached as reply to the latest message
 8. **Completion**: Agent logs result and moves to next email
 
@@ -199,14 +202,36 @@ The Reply Drafter supports customizable drafting behavior through Google Drive d
 
 ### Overview
 
-The knowledge system uses two types of documents following [ADR-015](../../docs/adr/015-instructions-knowledge-naming.md) semantic naming:
+The knowledge system uses a **two-tier architecture** (ADR-019):
 
+**1. Global Knowledge (Organization-Wide Context)**
+- Configuration: `GLOBAL_KNOWLEDGE_FOLDER_URL` + `GLOBAL_KNOWLEDGE_MAX_DOCS`
+- Applies to: ALL AI operations (categorization, reply drafting, summarization)
+- Contains: Team structure, projects, terminology, domain knowledge
+- Purpose: Shared organizational context across all features
+
+**2. Agent-Specific Knowledge (Reply Drafting Instructions)**
+- Configuration: `REPLY_DRAFTER_INSTRUCTIONS_URL` + `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL`
+- Applies to: Reply drafting only
+- Contains: Tone, style, example drafts, templates
+- Purpose: Customize reply drafting behavior
+
+The knowledge system follows [ADR-015](../../docs/adr/015-instructions-knowledge-naming.md) semantic naming:
 - **INSTRUCTIONS**: How to draft replies (tone, style, length, methodology)
 - **KNOWLEDGE**: Contextual reference material (examples, templates, patterns)
 
-Both are optional. Without knowledge configuration, the Reply Drafter uses default professional business style.
+All knowledge is optional. Without configuration, the Reply Drafter uses default professional business style.
 
 ### Configuration Properties
+
+**Global Knowledge (Shared Across All AI Operations - ADR-019):**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `GLOBAL_KNOWLEDGE_FOLDER_URL` | Folder URL or ID | Organization-wide context folder (team structure, projects, terminology) |
+| `GLOBAL_KNOWLEDGE_MAX_DOCS` | Number (default: 5) | Maximum documents to fetch from global knowledge folder |
+
+**Reply Drafter Specific Knowledge:**
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -215,6 +240,31 @@ Both are optional. Without knowledge configuration, the Reply Drafter uses defau
 | `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | Number (default: 5) | Maximum documents to fetch from knowledge folder (ADR-015) |
 
 ### Setup Guide
+
+#### Option 0: Global Knowledge (Organization-Wide Context - Recommended First)
+
+Before configuring reply-specific knowledge, consider setting up global knowledge that applies to ALL AI operations:
+
+**Example Global Knowledge Folder:**
+```
+Organization Context/
+├── team-structure.gdoc      (engineering teams: Core Platform, Data Services, ML Research)
+├── project-phoenix.gdoc      (Q1 priority initiative - email AI platform)
+├── terminology.gdoc          (RFR = Ready for Review, P0 = critical priority)
+└── domain-knowledge.gdoc     (company builds email management tools for enterprises)
+```
+
+**Configuration:**
+```
+GLOBAL_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/GLOBAL_FOLDER_ID
+GLOBAL_KNOWLEDGE_MAX_DOCS = 10
+```
+
+**Benefits:**
+- Reply Drafter (and ALL other AI operations) automatically understand your organization
+- No need to duplicate team/project context in reply-specific knowledge
+- Consistent organizational awareness across categorization, summarization, and reply drafting
+- Update once, applies everywhere
 
 #### Option 1: Instructions Only (Simple Customization)
 
@@ -638,15 +688,22 @@ The Reply Drafter follows [ADR-010: PromptBuilder and LLMService Separation](../
 
 **Knowledge Integration:**
 ```javascript
-// Knowledge fetched via KnowledgeService
-const knowledge = fetchReplyKnowledge_({
+// Global knowledge fetched (applies to ALL AI operations - ADR-019)
+const globalKnowledge = fetchGlobalKnowledge_({
+  folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
+  maxDocs: parseInt(cfg.GLOBAL_KNOWLEDGE_MAX_DOCS || '5')
+});
+
+// Reply-specific knowledge fetched via KnowledgeService
+const replyKnowledge = fetchReplyKnowledge_({
   instructionsUrl: config.REPLY_DRAFTER_INSTRUCTIONS_URL,
   knowledgeFolderUrl: config.REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL,  // ADR-015
   maxDocs: config.REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS  // ADR-015
 });
 
-// Prompt built with conditional knowledge injection
-const prompt = buildReplyDraftPrompt_(emailThread, knowledge);
+// Prompt built with both global and reply-specific knowledge
+// Injection order: Global FIRST, then reply-specific
+const prompt = buildReplyDraftPrompt_(emailThread, replyKnowledge, globalKnowledge);
 
 // AI service called with pre-built prompt
 const draftText = generateReplyDraft_(prompt, model, projectId, location, apiKey);

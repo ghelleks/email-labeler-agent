@@ -130,6 +130,16 @@ function generateSummaryFromEmails_(emails) {
     // Generate email permalink references for the AI
     const emailLinks = generateEmailPermalinks_(emails);
 
+    // Fetch global knowledge (shared across all AI operations)
+    const globalKnowledge = fetchGlobalKnowledge_();
+
+    if (config.SUMMARIZER_DEBUG) {
+      if (globalKnowledge.configured) {
+        Logger.log('AgentSummarizer: ✓ Loaded global knowledge: ' + globalKnowledge.metadata.docCount + ' documents (' +
+                   globalKnowledge.metadata.utilizationPercent + ' utilization)');
+      }
+    }
+
     // Build configuration for summary generation
     const summaryConfig = {
       emailLinks: emailLinks,
@@ -137,7 +147,7 @@ function generateSummaryFromEmails_(emails) {
     };
 
     // Build prompt with knowledge injection (new: prompt built by agent, not LLMService)
-    const prompt = buildSummaryPrompt_(emails, knowledge, summaryConfig);
+    const prompt = buildSummaryPrompt_(emails, knowledge, summaryConfig, globalKnowledge);
 
     // Use existing LLMService function for AI summarization
     const result = generateConsolidatedSummary_(prompt, summaryConfig);
