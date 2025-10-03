@@ -217,3 +217,94 @@ function generateConsolidatedSummary_(prompt, config) {
     };
   }
 }
+
+/**
+ * Generate reply draft using AI service with pre-built prompt
+ *
+ * NOTE: Caller is responsible for building prompt with knowledge injection.
+ * Use buildReplyDraftPrompt_(emailThread, knowledge) before calling this function.
+ *
+ * @param {string} prompt - Pre-built prompt from PromptBuilder
+ * @param {string} model - Model name (e.g., 'gemini-2.0-flash-exp')
+ * @param {string} projectId - Google Cloud project ID (for Vertex AI)
+ * @param {string} location - Google Cloud location (for Vertex AI)
+ * @param {string} apiKey - Gemini API key (for API key auth)
+ * @returns {string} Draft reply text
+ * @throws {Error} If API call fails or budget exceeded
+ */
+function generateReplyDraft_(prompt, model, projectId, location, apiKey) {
+  // Check budget
+  const cfg = getConfig_();
+  if (!enforceBudget_(1, cfg.DAILY_GEMINI_BUDGET)) {
+    throw new Error('Daily AI budget exceeded for reply drafting. Please try again tomorrow.');
+  }
+
+  // Build API request
+  const payload = {
+    contents: [{
+      role: 'user',
+      parts: [{ text: prompt }]
+    }]
+  };
+
+  // Choose endpoint based on authentication
+  const useApiKey = !!apiKey;
+  const url = useApiKey
+    ? 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(apiKey)
+    : 'https://' + location + '-aiplatform.googleapis.com/v1/projects/' + encodeURIComponent(projectId) + '/locations/' + encodeURIComponent(location) + '/publishers/google/models/' + encodeURIComponent(model) + ':generateContent';
+
+  const headers = useApiKey ? {} : { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: headers,
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  // Make API call
+  const response = UrlFetchApp.fetch(url, options);
+  const responseCode = response.getResponseCode();
+
+  if (responseCode !== 200) {
+    const errorText = response.getContentText();
+
+    // Handle token limit errors gracefully
+    if (errorText.includes('token limit') || errorText.includes('context length') || errorText.includes('exceeded maximum')) {
+      throw new Error(
+        'Gemini API token limit exceeded. ' +
+        'Your knowledge documents and email thread exceeded the model\'s capacity. ' +
+        'Try reducing REPLY_DRAFTER_CONTEXT_MAX_DOCS or simplifying instructions. ' +
+        'Original error: ' + errorText
+      );
+    }
+
+    throw new Error('AI service error (' + responseCode + '): ' + errorText);
+  }
+
+  // Parse response
+  let json = {};
+  try {
+    json = JSON.parse(response.getContentText());
+  } catch (e) {
+    throw new Error('Failed to parse AI service response: ' + e.message);
+  }
+
+  // Extract draft text
+  const draftText = json.candidates
+    && json.candidates[0]
+    && json.candidates[0].content
+    && json.candidates[0].content.parts
+    && json.candidates[0].content.parts[0]
+    && json.candidates[0].content.parts[0].text;
+
+  if (!draftText) {
+    throw new Error('No draft text received from AI service');
+  }
+
+  if (cfg.REPLY_DRAFTER_DEBUG) {
+    Logger.log('Generated reply draft: ' + draftText.length + ' characters');
+  }
+
+  return draftText.trim();
+}

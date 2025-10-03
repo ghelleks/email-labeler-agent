@@ -161,6 +161,68 @@ SUMMARIZER_DEBUG = true
 SUMMARIZER_DRY_RUN = true
 ```
 
+## Reply Drafter Agent Configuration
+
+Settings for the [Reply Drafter Agent](../agents/reply-drafter.md).
+
+**Note**: Reply Drafter configuration is managed in `AgentReplyDrafter.gs` via `getReplyDrafterConfig_()` function (ADR-014), not in core `Config.gs`. This follows the self-contained agent architecture pattern.
+
+**Execution Modes**: The Reply Drafter operates in two modes:
+1. **Agent Handler**: Runs during email classification (immediate draft creation for newly-classified emails)
+2. **Scheduled Batch**: Runs every 30 minutes to process ALL `reply_needed` emails (manually labeled, retries, historical emails)
+
+Install the scheduled batch trigger with `installReplyDrafterTrigger` function in Apps Script editor for comprehensive coverage.
+
+### Basic Configuration
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `REPLY_DRAFTER_ENABLED` | `true` | Enable/disable the Reply Drafter agent (both execution modes) |
+
+### Knowledge Configuration
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `REPLY_DRAFTER_INSTRUCTIONS_URL` | None | Google Docs URL with drafting style/methodology |
+| `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL` | None | Google Drive folder URL with knowledge documents (ADR-015) |
+| `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | `5` | Maximum documents to fetch from knowledge folder (ADR-015) |
+
+### Debugging Configuration
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `REPLY_DRAFTER_DEBUG` | `false` | Enable detailed logging for the agent |
+| `REPLY_DRAFTER_DRY_RUN` | `false` | Test mode (analyze but don't create drafts) |
+
+**Configuration examples**:
+
+**Basic setup** (use default drafting style):
+```
+REPLY_DRAFTER_ENABLED = true
+```
+**Note**: Also install the scheduled batch trigger (`installReplyDrafterTrigger`) for comprehensive coverage of manually labeled emails.
+
+**Custom drafting style** (instructions only):
+```
+REPLY_DRAFTER_ENABLED = true
+REPLY_DRAFTER_INSTRUCTIONS_URL = https://docs.google.com/document/d/abc123/edit
+```
+
+**Full knowledge customization** (instructions + examples):
+```
+REPLY_DRAFTER_ENABLED = true
+REPLY_DRAFTER_INSTRUCTIONS_URL = https://docs.google.com/document/d/abc123/edit
+REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL = https://drive.google.com/drive/folders/xyz789
+REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS = 3
+```
+
+**Debug mode**:
+```
+REPLY_DRAFTER_ENABLED = true
+REPLY_DRAFTER_DEBUG = true
+REPLY_DRAFTER_DRY_RUN = true
+```
+
 ## Knowledge System Configuration
 
 Settings for the [Knowledge System](../features/knowledge-system.md) (advanced).
@@ -478,7 +540,9 @@ Quick reference table of all default values:
 | `DEFAULT_FALLBACK_LABEL` | `review` | `SUMMARIZER_DEBUG` | `false` |
 | `DRY_RUN` | `false` | `SUMMARIZER_DRY_RUN` | `false` |
 | `DEBUG` | `false` | `WEBAPP_ENABLED` | `true` |
-| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `50` | `KNOWLEDGE_CACHE_DURATION_MINUTES` | `30` |
+| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `50` | `REPLY_DRAFTER_ENABLED` | `true` |
+| `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | `5` | `REPLY_DRAFTER_DEBUG` | `false` |
+| `REPLY_DRAFTER_DRY_RUN` | `false` | `KNOWLEDGE_CACHE_DURATION_MINUTES` | `30` |
 | `LABEL_KNOWLEDGE_MAX_DOCS` | `5` | `KNOWLEDGE_DEBUG` | `false` |
 | `KNOWLEDGE_LOG_SIZE_WARNINGS` | `true` | | |
 
@@ -487,6 +551,7 @@ Quick reference table of all default values:
 - [Back to README](../../README.md)
 - [Troubleshooting Guide](troubleshooting.md) - Common configuration issues
 - [Knowledge System](../features/knowledge-system.md) - Advanced knowledge configuration
+- [Reply Drafter Agent](../agents/reply-drafter.md) - Reply Drafter-specific configuration
 - [Email Summarizer Agent](../agents/email-summarizer.md) - Summarizer-specific configuration
 - [Web App Dashboard](../features/web-app.md) - Web app configuration
 - [Multi-Account Deployment](../features/multi-account.md) - Per-account configuration

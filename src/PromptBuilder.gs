@@ -149,3 +149,96 @@ function buildSummaryPrompt_(emailContents, knowledge, config) {
 
   return promptParts.join('\n');
 }
+
+/**
+ * Format email thread for inclusion in prompt
+ * @private
+ * @param {Object} emailThread - Thread object with messages array
+ * @returns {string} - Formatted email thread
+ */
+function formatEmailThread_(emailThread) {
+  if (!emailThread || !emailThread.messages || emailThread.messages.length === 0) {
+    return 'No email thread available.';
+  }
+
+  return emailThread.messages.map(function(msg, idx) {
+    const parts = [];
+    parts.push('--- Email ' + (idx + 1) + ' ---');
+    parts.push('From: ' + (msg.from || 'Unknown'));
+    parts.push('To: ' + (msg.to || 'Unknown'));
+    parts.push('Date: ' + (msg.date || 'Unknown'));
+    parts.push('Subject: ' + (msg.subject || '(No subject)'));
+    parts.push('');
+    parts.push(msg.body || '(No content)');
+    return parts.join('\n');
+  }).join('\n\n');
+}
+
+/**
+ * Build reply draft prompt with optional knowledge injection
+ * @param {Object} emailThread - Thread object with messages array
+ * @param {Object} knowledge - Knowledge object from KnowledgeService (optional)
+ * @returns {string} - Complete prompt for reply generation
+ */
+function buildReplyDraftPrompt_(emailThread, knowledge) {
+  const parts = ['You are drafting a professional email reply.'];
+
+  // CONDITIONAL KNOWLEDGE INJECTION
+  if (knowledge && knowledge.configured) {
+    parts.push('');
+    parts.push('=== YOUR DRAFTING INSTRUCTIONS ===');
+    parts.push(knowledge.knowledge);
+
+    // Add signature requirement
+    parts.push('');
+    parts.push('SIGNATURE REQUIREMENT:');
+    parts.push('- Sign the email with your name if specified in the instructions above');
+    parts.push('- If your name is not clear from the instructions, use "[Your name here]" as the signature');
+
+    // Add source attribution if available
+    if (knowledge.metadata && knowledge.metadata.sources && knowledge.metadata.sources.length > 0) {
+      parts.push('');
+      const sourceNames = knowledge.metadata.sources.map(function(s) { return s.name; });
+      parts.push('Context sources: ' + sourceNames.join(', '));
+    }
+
+    // Token utilization logging (when REPLY_DRAFTER_DEBUG enabled)
+    if (knowledge.metadata && knowledge.metadata.utilizationPercent) {
+      const cfg = getConfig_();
+      if (cfg.REPLY_DRAFTER_DEBUG) {
+        console.log(JSON.stringify({
+          replyDrafterKnowledgeUtilization: knowledge.metadata.utilizationPercent,
+          estimatedTokens: knowledge.metadata.estimatedTokens,
+          modelLimit: knowledge.metadata.modelLimit
+        }, null, 2));
+      }
+    }
+  } else {
+    // Basic instructions when no knowledge configured
+    parts.push('');
+    parts.push('=== DRAFTING GUIDELINES ===');
+    parts.push('- Match the tone and formality of the original email');
+    parts.push('- Be concise and actionable');
+    parts.push('- Address all questions and concerns raised');
+    parts.push('- Use a professional but friendly tone');
+    parts.push('- End with appropriate next steps or closing');
+    parts.push('- Sign with the user\'s name from the knowledge/instructions, or use "[Your name here]" if not specified');
+  }
+
+  parts.push('');
+  parts.push('=== EMAIL THREAD ===');
+  parts.push(formatEmailThread_(emailThread));
+  parts.push('');
+  parts.push('=== REPLY INSTRUCTIONS ===');
+  parts.push('Draft a professional reply that addresses all points raised in the most recent email.');
+  parts.push('');
+  parts.push('IMPORTANT FORMAT REQUIREMENTS:');
+  parts.push('- Return ONLY the email body text (no subject line, no "Subject:", no headers)');
+  parts.push('- Start directly with the greeting or body content');
+  parts.push('- End with an appropriate signature');
+  parts.push('- Sign the email with the user\'s name if provided in the drafting instructions');
+  parts.push('- If the user\'s name is not clear from the instructions, use "[Your name here]" as the signature');
+  parts.push('- Do NOT include any preamble, explanation, or meta-commentary');
+
+  return parts.join('\n');
+}
