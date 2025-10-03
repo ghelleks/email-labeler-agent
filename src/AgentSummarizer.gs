@@ -445,10 +445,10 @@ AGENT_MODULES.push(function(api) {
     'emailSummarizer',     // Agent name
     summarizerAgentHandler, // Handler function
     {
-      idempotentKey: function(ctx) { return 'emailSummarizer:' + ctx.threadId; },
       runWhen: 'afterLabel',  // Run after labeling (respects dry-run)
       timeoutMs: 30000,       // Soft timeout guidance
       enabled: true           // Enabled by default
+      // ADR-017: Removed idempotentKey - archiving is naturally idempotent
     }
   );
 });

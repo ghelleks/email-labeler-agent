@@ -293,10 +293,10 @@ AGENT_MODULES.push(function(api) {
     'ReplyDrafter',           // Agent name
     processReplyNeeded_,      // Handler function
     {
-      idempotentKey: function(ctx) { return 'replyDrafter:' + ctx.threadId; },
       runWhen: 'afterLabel',  // Run after labeling (respects dry-run)
       timeoutMs: 30000,       // Soft timeout guidance
       enabled: true           // Enabled by default
+      // ADR-017: Removed idempotentKey - agent checks for existing drafts (line 58)
     }
   );
 });

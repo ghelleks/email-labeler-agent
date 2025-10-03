@@ -312,10 +312,10 @@ AGENT_MODULES.push(function(api) {
     'templateAgent',    // Agent name
     templateAgentHandler, // Handler function
     {
-      idempotentKey: function(ctx) { return 'templateAgent:' + ctx.threadId; },
       runWhen: 'afterLabel',  // Run after labeling (respects dry-run)
       timeoutMs: 30000,       // Soft timeout guidance
       enabled: false          // Disabled by default
+      // ADR-017: Removed idempotentKey - agents implement own checks as needed
     }
   );
 });

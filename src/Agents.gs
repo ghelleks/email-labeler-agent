@@ -2,14 +2,6 @@ var Agents = (function() {
   var registryByLabel = new Map();
   var runCountThisExecution = 0;
 
-  function getUserProps_() {
-    return PropertiesService.getUserProperties();
-  }
-
-  function defaultIdempotentKey_(name, ctx) {
-    return name + ':' + ctx.threadId;
-  }
-
   function isFunction_(f) {
     return typeof f === 'function';
   }
@@ -40,7 +32,6 @@ var Agents = (function() {
     if (!list.length) return results;
 
     var budget = typeof cfg.AGENTS_BUDGET_PER_RUN === 'number' ? cfg.AGENTS_BUDGET_PER_RUN : 50;
-    var userProps = getUserProps_();
 
     for (var i = 0; i < list.length; i++) {
       var item = list[i];
@@ -64,20 +55,12 @@ var Agents = (function() {
         continue;
       }
 
-      var keyFn = item.options && item.options.idempotentKey;
-      var idemKey = (isFunction_(keyFn) ? keyFn(ctx) : defaultIdempotentKey_(item.name, ctx));
-      var idemStoreKey = 'agent_done:' + String(idemKey);
-      if (userProps.getProperty(idemStoreKey)) {
-        results.push({ agent: item.name, status: 'skip', info: 'idempotent-skip' });
-        continue;
-      }
+      // ADR-017: Removed UserProperties-based idempotency tracking
+      // Agents implement application-level idempotency checks as needed
 
       try {
         runCountThisExecution++;
         var result = item.handler(ctx) || { status: 'ok' };
-        if (result && result.status === 'ok') {
-          userProps.setProperty(idemStoreKey, '1');
-        }
         results.push({ agent: item.name, status: result.status || 'ok', info: result.info, retryAfterMs: result.retryAfterMs });
       } catch (e) {
         results.push({ agent: item.name, status: 'error', info: (e && e.toString ? e.toString() : String(e)) });
@@ -114,5 +97,43 @@ var Agents = (function() {
     registerAllModules: registerAllModules
   };
 })();
+
+// ============================================================================
+// Migration Utilities (ADR-017)
+// ============================================================================
+
+/**
+ * Clear all legacy agent idempotency keys from UserProperties
+ * Run once after deploying ADR-017 changes
+ *
+ * This removes all 'agent_done:*' keys that were used for framework-level
+ * idempotency tracking. After ADR-017, agents implement their own
+ * application-level idempotency checks as needed.
+ *
+ * @returns {Object} Summary of cleanup operation
+ */
+function clearAllAgentIdempotencyKeys() {
+  const userProps = PropertiesService.getUserProperties();
+  const allProps = userProps.getProperties();
+  const agentKeys = Object.keys(allProps).filter(function(k) {
+    return k.startsWith('agent_done:');
+  });
+
+  console.log('Found ' + agentKeys.length + ' legacy agent idempotency keys to clear');
+
+  // Clear all agent state keys
+  agentKeys.forEach(function(key) {
+    userProps.deleteProperty(key);
+  });
+
+  const summary = {
+    keysCleared: agentKeys.length,
+    sampleKeys: agentKeys.slice(0, 5), // Show first 5 for verification
+    timestamp: new Date().toISOString()
+  };
+
+  console.log('Migration complete: ' + JSON.stringify(summary, null, 2));
+  return summary;
+}
 
 
