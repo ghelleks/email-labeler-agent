@@ -131,11 +131,7 @@ function generateSummaryFromEmails_(emails) {
     const emailLinks = generateEmailPermalinks_(emails);
 
     // Fetch global knowledge (shared across all AI operations)
-    const cfg = getConfig_();
-    const globalKnowledge = fetchGlobalKnowledge_({
-      folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
-      maxDocs: cfg.GLOBAL_KNOWLEDGE_MAX_DOCS
-    });
+    const globalKnowledge = fetchGlobalKnowledge_();
 
     if (config.SUMMARIZER_DEBUG) {
       if (globalKnowledge.configured) {

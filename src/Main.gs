@@ -46,10 +46,7 @@ function run() {
   }
 
   // Fetch global knowledge (shared across all AI operations)
-  const globalKnowledge = fetchGlobalKnowledge_({
-    folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
-    maxDocs: cfg.GLOBAL_KNOWLEDGE_MAX_DOCS
-  });
+  const globalKnowledge = fetchGlobalKnowledge_();
 
   if (cfg.DEBUG) {
     if (globalKnowledge.configured) {

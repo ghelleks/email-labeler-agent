@@ -240,10 +240,7 @@ function processReplyNeeded_(ctx) {
     // Fetch global knowledge (shared across all AI operations)
     let globalKnowledge;
     try {
-      globalKnowledge = fetchGlobalKnowledge_({
-        folderUrl: ctx.cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
-        maxDocs: ctx.cfg.GLOBAL_KNOWLEDGE_MAX_DOCS
-      });
+      globalKnowledge = fetchGlobalKnowledge_();
 
       if (config.REPLY_DRAFTER_DEBUG && globalKnowledge.configured) {
         ctx.log('✓ Loaded global knowledge: ' + globalKnowledge.metadata.docCount + ' documents (' +
@@ -402,10 +399,7 @@ function replyDrafterPostLabelScan_() {
         const cfg = getConfig_();
 
         // Fetch global knowledge (shared across all AI operations)
-        const globalKnowledge = fetchGlobalKnowledge_({
-          folderUrl: cfg.GLOBAL_KNOWLEDGE_FOLDER_URL,
-          maxDocs: cfg.GLOBAL_KNOWLEDGE_MAX_DOCS
-        });
+        const globalKnowledge = fetchGlobalKnowledge_();
 
         if (config.REPLY_DRAFTER_DEBUG && i === 0 && globalKnowledge.configured) {
           Logger.log('Reply Drafter postLabel: ✓ Loaded global knowledge: ' + globalKnowledge.metadata.docCount + ' documents (' +
