@@ -234,50 +234,23 @@ function testEndToEndLabeling() {
 }
 
 /**
- * Test 5: Backward Compatibility (RULE_DOC_URL)
+ * Test 5: Backward Compatibility (RULE_DOC_URL) - REMOVED
  *
- * Tests that old RULE_DOC_URL configuration still works via wrapper
+ * This test was removed when RuleDocService.gs was deprecated and deleted.
+ * Legacy RULE_DOC_URL/RULE_DOC_ID properties are no longer supported.
+ * All configurations must use LABEL_INSTRUCTIONS_DOC_URL and/or LABEL_KNOWLEDGE_FOLDER_URL.
  */
 function testBackwardCompatibility() {
   Logger.log('========================================');
-  Logger.log('TEST 5: Backward Compatibility');
+  Logger.log('TEST 5: Backward Compatibility (REMOVED)');
   Logger.log('========================================\n');
 
-  const props = PropertiesService.getScriptProperties();
-  const oldRuleDocUrl = props.getProperty('RULE_DOC_URL');
-  const oldRuleDocId = props.getProperty('RULE_DOC_ID');
-
-  if (!oldRuleDocUrl && !oldRuleDocId) {
-    Logger.log('ℹ️  No legacy RULE_DOC_URL or RULE_DOC_ID configured');
-    Logger.log('Skipping backward compatibility test');
-    return;
-  }
-
-  try {
-    Logger.log('Testing deprecated getRuleText_() wrapper...\n');
-    Logger.log('Legacy property: ' + (oldRuleDocUrl || oldRuleDocId));
-
-    // Enable DEBUG to see deprecation warning
-    const originalDebug = props.getProperty('DEBUG');
-    props.setProperty('DEBUG', 'true');
-
-    const rulesText = getRuleText_(oldRuleDocUrl || oldRuleDocId);
-
-    // Restore DEBUG setting
-    if (originalDebug) {
-      props.setProperty('DEBUG', originalDebug);
-    } else {
-      props.deleteProperty('DEBUG');
-    }
-
-    Logger.log('✅ Legacy configuration still works\n');
-    Logger.log('Rules text length: ' + rulesText.length + ' chars');
-    Logger.log('Check logs above for deprecation warning');
-    Logger.log('\nRecommendation: Migrate to LABEL_KNOWLEDGE_DOC_URL');
-
-  } catch (e) {
-    Logger.log('❌ ERROR with legacy configuration: ' + e.message);
-  }
+  Logger.log('⚠️  RuleDocService has been removed from the codebase');
+  Logger.log('Legacy RULE_DOC_URL and RULE_DOC_ID are no longer supported\n');
+  Logger.log('Migration required:');
+  Logger.log('  RULE_DOC_URL → LABEL_INSTRUCTIONS_DOC_URL');
+  Logger.log('  Additional context → LABEL_KNOWLEDGE_FOLDER_URL\n');
+  Logger.log('See CLAUDE.md for migration guide');
 }
 
 /**

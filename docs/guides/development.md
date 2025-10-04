@@ -70,7 +70,6 @@ email-agent/
 │   ├── AgentTemplate.gs          # Template for new agents
 │   ├── WebAppController.gs       # Web app API
 │   ├── WebApp.html               # Web app interface
-│   ├── RuleDocService.gs         # Legacy rules (deprecated)
 │   └── appsscript.json           # Apps Script manifest
 ├── docs/                         # Documentation
 │   ├── agents/                   # Agent-specific docs

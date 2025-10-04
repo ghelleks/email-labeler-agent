@@ -122,7 +122,6 @@ The `deploy:[account]` commands attempt automated trigger installation but may f
 - **Agents.gs**: Pluggable agent system for extensible email processing
 - **GmailService.gs**: Gmail API operations, thread management, and generic service functions
 - **Config.gs**: Configuration management using Apps Script Properties
-- **RuleDocService.gs**: Integration with Google Drive for classification rules (deprecated, use KnowledgeService)
 - **WebAppController.gs**: Web app entry point and API orchestration for interactive dashboard
 - **WebApp.html**: Mobile-optimized HTML interface for on-demand email summarization
 - **AgentReplyDrafter.gs**: Self-contained Reply Drafter agent for automatic draft replies
@@ -507,39 +506,6 @@ by lowering KNOWLEDGE_MAX_DOCS or removing some documents.
 
 To disable warnings, set `KNOWLEDGE_LOG_SIZE_WARNINGS=false` in Script Properties.
 
-#### Migration from Legacy RuleDocService
-
-**Old Pattern (deprecated):**
-```javascript
-const rulesText = getRuleText_(cfg.RULE_DOC_URL);
-// Returns plain string or default rules if not configured
-```
-
-**New Pattern (recommended):**
-```javascript
-const knowledge = fetchLabelingKnowledge_({
-  docUrl: cfg.LABEL_KNOWLEDGE_DOC_URL,
-  folderUrl: cfg.LABEL_KNOWLEDGE_FOLDER_URL,
-  maxDocs: 5
-});
-
-if (knowledge.configured) {
-  const rulesText = knowledge.knowledge;
-  console.log(`Token usage: ${knowledge.metadata.utilizationPercent}`);
-} else {
-  // Use default rules or proceed without knowledge
-}
-```
-
-**Why Migrate:**
-- Access to folder-based knowledge (multiple documents)
-- Token transparency and utilization metrics
-- Smart caching reduces API quota usage
-- Consistent error handling across all features
-- Future-ready for explicit caching and grounding features
-
-The legacy `getRuleText_()` function remains available for backward compatibility but logs deprecation warnings when `DEBUG=true`.
-
 ### Classification Labels
 The system uses exactly four core labels (ADR-003):
 - `reply_needed`: Emails requiring personal response
@@ -561,21 +527,14 @@ Self-contained agents may create and manage additional labels:
 
 ### Google Drive Integration
 
-**Modern Approach (KnowledgeService):**
 The KnowledgeService provides unified knowledge management for AI prompts:
-- Configure `LABEL_KNOWLEDGE_DOC_URL` for single document with core rules
+- Configure `LABEL_INSTRUCTIONS_DOC_URL` for single document with core labeling instructions
 - Configure `LABEL_KNOWLEDGE_FOLDER_URL` for folder with multiple context documents
 - Both document and folder can be used together (document appears first in combined knowledge)
 - Supports both Google Docs URLs and document/folder IDs
 - Smart caching reduces Drive API quota usage
 - Token transparency shows utilization percentage
 - Fail-fast errors with actionable remediation steps
-
-**Legacy Approach (deprecated):**
-- Configure `RULE_DOC_URL` or `RULE_DOC_ID` in Script Properties (deprecated, use KnowledgeService)
-- Rules document provides examples and context for AI classification
-- Fallback to built-in rules if document unavailable
-- Migration path: use `fetchLabelingKnowledge_()` instead of `getRuleText_()`
 
 ## Key Architectural Decisions
 

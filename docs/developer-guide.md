@@ -14,7 +14,7 @@ This guide explains how the current system works and how to configure, extend, a
 - `src/Config.gs`: loads Script Properties and defaults
 - `src/Categorizer.gs`: batching, model calls, budget enforcement, normalization
 - `src/Organizer.gs`: applies labels to threads, summarizes outcomes
-- `src/RuleDocService.gs`: fetches rules from Drive, with a default fallback policy
+- `src/KnowledgeService.gs`: unified knowledge management from Google Drive
 - `src/LLMService.gs`: model request/response glue (used by categorizer)
 - `src/GmailService.gs`: helpers for querying and shaping Gmail data + generic service functions
 - `src/PromptBuilder.gs`: constructs the model prompt from emails + policy
@@ -107,19 +107,20 @@ npm run open
 
 ## Execution Flow
 1. `run()` reads config via `getConfig_()`.
-2. Ensures labels exist.
-3. Loads rules text from Drive (or default policy) via `getRuleText_()`.
-4. Queries candidate threads and extracts minimal email data.
-5. Sends batches to Gemini and parses a JSON result per email: `{ id, required_action, reason }`.
-6. Normalizes `required_action` to a valid label or falls back.
-7. Applies exactly one label per thread and logs a summary.
+2. Cleans up old budget properties via `cleanupOldBudgetProperties_()`.
+3. Ensures labels exist.
+4. Loads knowledge from Drive via `fetchLabelingKnowledge_()` (optional).
+5. Queries candidate threads and extracts minimal email data.
+6. Sends batches to Gemini and parses a JSON result per email: `{ id, required_action, reason }`.
+7. Normalizes `required_action` to a valid label or falls back.
+8. Applies exactly one label per thread and logs a summary.
 
 ### Key Functions
 - `run()` (in `Main.gs`): Orchestrates the entire run and logs a JSON summary.
 - `installTrigger()` / `deleteExistingTriggers_()` (in `Main.gs`): Manage time-based triggers.
 - `categorizeWithGemini_()` (in `Categorizer.gs`): Handles batching, budget checks, normalization.
 - `categorizeBatch_()` (in `LLMService.gs`): Builds request, calls model endpoint, and parses responses.
-- `getRuleText_()` (in `RuleDocService.gs`): Loads rule content from Docs or returns built-in policy.
+- `fetchLabelingKnowledge_()` (in `KnowledgeService.gs`): Loads knowledge documents from Drive.
 - `Organizer.apply_()` (in `Organizer.gs`): Applies labels and returns counts.
 
 ## Prompt & Rules
@@ -640,9 +641,9 @@ if (thread.getLabels().some(l => l.getName() === 'agent_processed')) {
 /Users/gunnarhellekson/Code/email-agent/src/LLMService.gs
 /Users/gunnarhellekson/Code/email-agent/src/Categorizer.gs
 ```
-- Rule document handling:
+- Knowledge management:
 ```text
-/Users/gunnarhellekson/Code/email-agent/src/RuleDocService.gs
+/Users/gunnarhellekson/Code/email-agent/src/KnowledgeService.gs
 ```
 - Generic service layer:
 ```text
