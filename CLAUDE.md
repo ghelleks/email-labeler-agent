@@ -130,11 +130,12 @@ The `deploy:[account]` commands attempt automated trigger installation but may f
 - **AgentTemplate.gs**: Enhanced agent template demonstrating self-contained patterns
 
 ### Data Flow
-1. `findUnprocessed_()` identifies unlabeled email threads
-2. `minimalize_()` extracts relevant content within character limits
-3. `categorizeWithGemini_()` sends emails to AI for classification
-4. `Organizer.apply_()` applies labels based on AI results
-5. Budget tracking prevents API quota overruns
+1. `cleanupOldBudgetProperties_()` removes old budget tracking properties (runs first, prevents accumulation)
+2. `findUnprocessed_()` identifies unlabeled email threads
+3. `minimalize_()` extracts relevant content within character limits
+4. `categorizeWithGemini_()` sends emails to AI for classification
+5. `Organizer.apply_()` applies labels based on AI results
+6. Budget tracking prevents API quota overruns
 
 ### Configuration System
 Configuration uses Apps Script Script Properties accessible via the Apps Script editor:
@@ -147,6 +148,7 @@ Configuration uses Apps Script Script Properties accessible via the Apps Script 
 - `MAX_EMAILS_PER_RUN`: Limits emails processed per execution (default: 20)
 - `BATCH_SIZE`: Number of emails sent to AI in one request (default: 10)
 - `DAILY_GEMINI_BUDGET`: Daily API call limit (default: 50)
+- `BUDGET_HISTORY_DAYS`: Number of days to retain budget tracking properties (default: 3)
 
 #### Web App Configuration
 - `WEBAPP_ENABLED`: Enable/disable web app functionality (default: true)
@@ -676,4 +678,10 @@ Refer to `docs/adr/` for complete context:
 - **Solution**: Add example drafts to `REPLY_DRAFTER_KNOWLEDGE_FOLDER_URL` for AI to learn from
 - **Solution**: Enable `REPLY_DRAFTER_DEBUG=true` to see token utilization and knowledge loading
 - **Solution**: Review generated drafts and refine instructions document based on patterns
-- This project doesn't require test functions that are not part of the regular execution.
+
+**🔍 Problem**: Script Properties accumulating too many budget entries
+- **Solution**: Budget cleanup runs automatically every execution cycle
+- **Solution**: Adjust `BUDGET_HISTORY_DAYS` to control retention (default: 3 days)
+- **Solution**: Lower values clean up more aggressively, higher values retain more history
+- **Solution**: Enable `DEBUG=true` to see cleanup logs showing what was deleted
+- **Note**: Old budget properties (format: `BUDGET-YYYY-MM-DD`) are automatically removed after the retention period

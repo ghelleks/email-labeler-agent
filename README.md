@@ -281,6 +281,7 @@ All settings are optional and have sensible defaults. Configure via Script Prope
 | `DRY_RUN` | `false` | Test mode (analyze but don't apply labels) |
 | `DEBUG` | `false` | Verbose logging for troubleshooting |
 | `MAX_EMAILS_PER_RUN` | `20` | Maximum emails to process each run |
+| `BUDGET_HISTORY_DAYS` | `3` | Days to retain budget tracking properties |
 
 **For complete configuration reference**: See [Configuration Guide](docs/guides/configuration.md)
 
