@@ -39,12 +39,14 @@ These settings control the main email labeling functionality.
 | `BATCH_SIZE` | `10` | Number of emails sent to AI in one request |
 | `BODY_CHARS` | `1200` | Characters of email body to analyze |
 | `DAILY_GEMINI_BUDGET` | `50` | Maximum AI API calls per day |
+| `BUDGET_HISTORY_DAYS` | `3` | Days to retain budget tracking properties before cleanup |
 
 **When to adjust**:
 - Increase `MAX_EMAILS_PER_RUN` if you get many emails daily
 - Decrease `BATCH_SIZE` if experiencing timeouts
 - Increase `BODY_CHARS` if classification seems inaccurate
 - Adjust `DAILY_GEMINI_BUDGET` based on your API quota
+- Adjust `BUDGET_HISTORY_DAYS` to control Script Properties accumulation (lower = more aggressive cleanup)
 
 ### Behavior Settings
 
@@ -537,14 +539,14 @@ Quick reference table of all default values:
 | `BATCH_SIZE` | `10` | `SUMMARIZER_MAX_EMAILS_PER_SUMMARY` | `50` |
 | `BODY_CHARS` | `1200` | `SUMMARIZER_ARCHIVE_ON_LABEL` | `true` |
 | `DAILY_GEMINI_BUDGET` | `50` | `SUMMARIZER_ENABLED` | `true` |
-| `DEFAULT_FALLBACK_LABEL` | `review` | `SUMMARIZER_DEBUG` | `false` |
-| `DRY_RUN` | `false` | `SUMMARIZER_DRY_RUN` | `false` |
-| `DEBUG` | `false` | `WEBAPP_ENABLED` | `true` |
-| `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `50` | `REPLY_DRAFTER_ENABLED` | `true` |
-| `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | `5` | `REPLY_DRAFTER_DEBUG` | `false` |
-| `REPLY_DRAFTER_DRY_RUN` | `false` | `KNOWLEDGE_CACHE_DURATION_MINUTES` | `30` |
-| `LABEL_KNOWLEDGE_MAX_DOCS` | `5` | `KNOWLEDGE_DEBUG` | `false` |
-| `KNOWLEDGE_LOG_SIZE_WARNINGS` | `true` | | |
+| `BUDGET_HISTORY_DAYS` | `3` | `SUMMARIZER_DEBUG` | `false` |
+| `DEFAULT_FALLBACK_LABEL` | `review` | `SUMMARIZER_DRY_RUN` | `false` |
+| `DRY_RUN` | `false` | `WEBAPP_ENABLED` | `true` |
+| `DEBUG` | `false` | `WEBAPP_MAX_EMAILS_PER_SUMMARY` | `50` |
+| `REPLY_DRAFTER_ENABLED` | `true` | `REPLY_DRAFTER_KNOWLEDGE_MAX_DOCS` | `5` |
+| `REPLY_DRAFTER_DEBUG` | `false` | `REPLY_DRAFTER_DRY_RUN` | `false` |
+| `KNOWLEDGE_CACHE_DURATION_MINUTES` | `30` | `LABEL_KNOWLEDGE_MAX_DOCS` | `5` |
+| `KNOWLEDGE_DEBUG` | `false` | `KNOWLEDGE_LOG_SIZE_WARNINGS` | `true` |
 
 ## See Also
 

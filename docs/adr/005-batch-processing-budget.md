@@ -122,6 +122,14 @@ function checkBudget(apiType) {
 - Implement resume capability for interrupted processing
 - Clean up old batch state data
 
+### Budget Property Cleanup (Added 2025)
+- Automatic cleanup of old date-based budget properties (`BUDGET-YYYY-MM-DD`)
+- Configurable retention period via `BUDGET_HISTORY_DAYS` (default: 3 days)
+- Runs automatically at the start of each execution cycle
+- Prevents Script Properties accumulation over time
+- Logs cleanup activity when `DEBUG=true`
+- Non-fatal errors don't interrupt main execution
+
 ### Budget Reset Mechanism
 - Daily reset based on user timezone
 - Clear budget counters at midnight

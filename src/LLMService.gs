@@ -88,7 +88,10 @@ function extractFirstJson_(txt) {
 
 function enforceBudget_(nCalls, dailyLimit) {
   const d = new Date();
-  const key = 'BUDGET_' + d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const key = 'BUDGET-' + year + '-' + month + '-' + day;
   const props = PropertiesService.getScriptProperties();
   const cur = parseInt(props.getProperty(key) || '0', 10);
   if (cur + nCalls > dailyLimit) return false;
